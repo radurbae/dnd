@@ -77,18 +77,18 @@ export async function POST(request: Request) {
     messages
   });
 
-  result.onFinish(async ({ text }) => {
+  void result.text.then(async (text) => {
     if (!text.trim()) {
       return;
     }
 
-    const result = await convex.mutation(api.messages.send, {
+    const sendResult = await convex.mutation(api.messages.send, {
       roomCode,
       playerName: "Dungeon Master",
       body: text
     });
 
-    if (result?.needsSummary) {
+    if (sendResult?.needsSummary) {
       await summarizeRoom(convex, roomCode);
     }
   });
