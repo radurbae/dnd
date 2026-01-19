@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import type { LanguageModelV1 } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
@@ -33,7 +34,7 @@ export async function summarizeRoom(
     .join("\n");
 
   const summaryResult = await generateText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
     system: summaryPrompt,
     prompt:
       `Previous summary: ${room.summary || "None"}\n` +

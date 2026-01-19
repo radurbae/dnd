@@ -1,4 +1,5 @@
 import { streamText } from "ai";
+import type { LanguageModelV1 } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     room?.summary?.trim() || "No campaign summary yet";
 
   const result = await streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
     system: buildDungeonMasterPrompt(partySummary, campaignSummary),
     messages
   });
