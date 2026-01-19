@@ -235,12 +235,12 @@ export default function Home() {
     }
 
     const rollCommand = parseRollCommand(message);
-    if (rollCommand?.error) {
+    if (rollCommand && "error" in rollCommand) {
       setError(rollCommand.error);
       return;
     }
 
-    if (rollCommand) {
+    if (rollCommand && "result" in rollCommand) {
       await sendRoll(rollCommand.sides, rollCommand.result);
       return;
     }
