@@ -236,7 +236,7 @@ export default function Home() {
 
     const rollCommand = parseRollCommand(message);
     if (rollCommand && "error" in rollCommand) {
-      setError(rollCommand.error);
+      setError(rollCommand.error ?? "Invalid roll command.");
       return;
     }
 
