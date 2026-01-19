@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import type { ConvexHttpClient } from "convex/node";
+import type { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 
 export async function summarizeRoom(

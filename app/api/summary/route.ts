@@ -1,4 +1,4 @@
-import { ConvexHttpClient } from "convex/node";
+import { ConvexHttpClient } from "convex/browser";
 import { summarizeRoom } from "../../lib/summarize";
 
 function getConvexUrl() {

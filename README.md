@@ -23,6 +23,13 @@ A real-time lobby + room chat built with Next.js and Convex.
    npm run dev
    ```
 
+## Deployment notes (Vercel)
+
+- Set `CONVEX_URL`, `NEXT_PUBLIC_CONVEX_URL`, and `OPENAI_API_KEY` in Vercel
+  environment variables.
+- The build runs `npx convex codegen` before `next build` to generate
+  `convex/_generated/*`.
+
 ## Notes
 
 - Room size is capped at 4 players.
