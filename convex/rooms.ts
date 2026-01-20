@@ -79,6 +79,7 @@ export const createRoom = mutation({
       summary: "",
       leaderName,
       turnMode: false,
+      dmActive: false,
       status: "lobby"
     });
 
@@ -285,5 +286,24 @@ export const startAdventure = mutation({
     }
 
     await ctx.db.patch(room._id, { status: "playing" });
+  }
+});
+
+export const setDmActive = mutation({
+  args: {
+    roomCode: v.string(),
+    active: v.boolean()
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db
+      .query("rooms")
+      .withIndex("by_code", (q) => q.eq("code", args.roomCode))
+      .first();
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    await ctx.db.patch(room._id, { dmActive: args.active });
   }
 });

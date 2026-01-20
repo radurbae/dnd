@@ -72,29 +72,50 @@ export async function POST(request: Request) {
   const campaignSummary =
     room?.summary?.trim() || "No campaign summary yet";
 
-  const result = await streamText({
-    model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
-    system: buildDungeonMasterPrompt(partySummary, campaignSummary),
-    messages: prompt
-      ? [...messages, { role: "user", content: prompt }]
-      : messages
+  await convex.mutation(api.rooms.setDmActive, {
+    roomCode,
+    active: true
   });
 
-  void result.text.then(async (text) => {
-    if (!text.trim()) {
-      return;
-    }
-
-    const sendResult = await convex.mutation(api.messages.send, {
-      roomCode,
-      playerName: "Dungeon Master",
-      body: text
+  let result;
+  try {
+    result = await streamText({
+      model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
+      system: buildDungeonMasterPrompt(partySummary, campaignSummary),
+      messages: prompt
+        ? [...messages, { role: "user", content: prompt }]
+        : messages
     });
+  } catch (err) {
+    await convex.mutation(api.rooms.setDmActive, {
+      roomCode,
+      active: false
+    });
+    throw err;
+  }
 
-    if (sendResult?.needsSummary) {
-      await summarizeRoom(convex, roomCode);
-    }
-  });
+  void result.text
+    .then(async (text) => {
+      if (!text.trim()) {
+        return;
+      }
+
+      const sendResult = await convex.mutation(api.messages.send, {
+        roomCode,
+        playerName: "Dungeon Master",
+        body: text
+      });
+
+      if (sendResult?.needsSummary) {
+        await summarizeRoom(convex, roomCode);
+      }
+    })
+    .finally(() => {
+      void convex.mutation(api.rooms.setDmActive, {
+        roomCode,
+        active: false
+      });
+    });
 
   return result.toTextStreamResponse();
 }

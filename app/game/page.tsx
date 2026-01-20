@@ -182,6 +182,15 @@ export default function Home() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [autoJoinAttempted, setAutoJoinAttempted] = useState(false);
   const [hasGeneratedCharacter, setHasGeneratedCharacter] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState<
+    Array<{
+      _id: string;
+      body: string;
+      playerName: string;
+      createdAt: number;
+      kind: "chat";
+    }>
+  >([]);
   const leftPanelRef = useRef<any>(null);
   const rightPanelRef = useRef<any>(null);
 
@@ -222,6 +231,7 @@ export default function Home() {
   const participantCount = participants?.length ?? 0;
   const isLeader = room?.leaderName === playerName;
   const turnModeEnabled = room?.turnMode ?? false;
+  const dmActive = room?.dmActive ?? false;
   const readyMap = useMemo(() => {
     const map = new Map<string, string>();
     party?.forEach((member) => {
@@ -232,7 +242,8 @@ export default function Home() {
   const readyCount =
     participants?.filter((member) => readyMap.has(member.playerName)).length ?? 0;
 
-  const canSend = message.trim().length > 0 && !isBusy;
+  const inputLocked = isBusy || dmActive;
+  const canSend = message.trim().length > 0 && !inputLocked;
   const slashActive = message.trim().startsWith("/");
 
   useEffect(() => {
@@ -299,6 +310,24 @@ export default function Home() {
       setIsAiStreaming(false);
     }
   }, [aiStartedAt, messages]);
+
+  useEffect(() => {
+    if (!messages?.length || pendingMessages.length === 0) {
+      return;
+    }
+
+    setPendingMessages((current) =>
+      current.filter(
+        (pending) =>
+          !messages.some(
+            (msg) =>
+              msg.playerName === pending.playerName &&
+              msg.body === pending.body &&
+              Math.abs(msg.createdAt - pending.createdAt) < 10000
+          )
+      )
+    );
+  }, [messages, pendingMessages.length]);
 
   useEffect(() => {
     if (!slashActive) {
@@ -387,6 +416,17 @@ export default function Home() {
     setError(null);
     setIsBusy(true);
     try {
+      const optimisticId = `pending-${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+      const optimisticMessage = {
+        _id: optimisticId,
+        body: message,
+        playerName,
+        createdAt: Date.now(),
+        kind: "chat"
+      };
+      setPendingMessages((current) => [...current, optimisticMessage]);
       const sendResult = await sendMessage({
         roomCode,
         playerName,
@@ -723,6 +763,16 @@ export default function Home() {
     () => new Intl.DateTimeFormat("en", { timeStyle: "short" }),
     []
   );
+
+  const visibleMessages = useMemo(() => {
+    if (!messages?.length) {
+      return pendingMessages;
+    }
+    if (!pendingMessages.length) {
+      return messages;
+    }
+    return [...messages, ...pendingMessages];
+  }, [messages, pendingMessages]);
 
   useEffect(() => {
     const isCollapsed = leftPanelRef.current?.isCollapsed?.() ?? false;
@@ -1154,10 +1204,13 @@ export default function Home() {
                           {error}
                         </div>
                       )}
-                      {messages?.length ? (
-                        messages.map((msg) => {
+                      {visibleMessages.length ? (
+                        visibleMessages.map((msg) => {
                           const isSystem = msg.kind === "system";
                           const isDm = msg.playerName === "Dungeon Master";
+                          const isPending =
+                            typeof msg._id === "string" &&
+                            msg._id.startsWith("pending-");
                           const rollMatch = isSystem
                             ? msg.body.match(/rolled\s+d\d+:\s*(\d+)/i)
                             : null;
@@ -1210,7 +1263,11 @@ export default function Home() {
                                     <div className="text-xs text-zinc-500">
                                       {timeFormatter.format(msg.createdAt)}
                                     </div>
-                                    <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-300">
+                                    <div
+                                      className={`prose prose-invert prose-zinc mt-2 max-w-none text-zinc-300 ${
+                                        isPending ? "opacity-60" : ""
+                                      }`}
+                                    >
                                       {renderWithMentions(msg.body)}
                                     </div>
                                   </div>
@@ -1224,7 +1281,7 @@ export default function Home() {
                           No messages yet.
                         </div>
                       )}
-                      {roomCode && (isAiStreaming || aiStream) && (
+                      {roomCode && (dmActive || isAiStreaming || aiStream) && (
                         <div className="mb-6 border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
                           <div className="text-xs uppercase text-zinc-500">
                             Dungeon Master · streaming
@@ -1249,15 +1306,17 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          className="text-zinc-500 transition hover:text-zinc-200"
+                          className="text-zinc-500 transition hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                           onClick={() => sendRoll(20)}
+                          disabled={inputLocked}
                           aria-label="Quick roll"
                         >
                           <Dice6 className="h-5 w-5" />
                         </button>
                         <button
                           type="button"
-                          className="text-zinc-500 transition hover:text-zinc-200"
+                          className="text-zinc-500 transition hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={inputLocked}
                           aria-label="Upload"
                         >
                           <Upload className="h-5 w-5" />
@@ -1266,14 +1325,19 @@ export default function Home() {
 
                       <div className="flex-1">
                         <textarea
-                          className="min-h-[44px] w-full resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
-                          placeholder="Write a message..."
+                          className="min-h-[44px] w-full resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          placeholder={
+                            dmActive
+                              ? "The Dungeon Master is plotting..."
+                              : "Write a message..."
+                          }
                           value={message}
                           onChange={(event) => {
                             const nextValue = event.target.value;
                             setMessage(nextValue);
                             setShowSlashMenu(nextValue.trim().startsWith("/"));
                           }}
+                          disabled={inputLocked}
                         />
                         {showSlashMenu && (
                           <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-2 text-sm text-zinc-300">
