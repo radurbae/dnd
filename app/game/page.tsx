@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import {
   RedirectToSignIn,
@@ -133,6 +134,7 @@ function escapeRegex(value: string) {
 
 export default function Home() {
   const { isLoaded, user } = useUser();
+  const searchParams = useSearchParams();
   const [fallbackName] = useState(() => createPlayerName());
   const playerName =
     user?.fullName ||
@@ -156,6 +158,7 @@ export default function Home() {
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [autoJoinAttempted, setAutoJoinAttempted] = useState(false);
   const [hasGeneratedCharacter, setHasGeneratedCharacter] = useState(false);
   const leftPanelRef = useRef<any>(null);
   const rightPanelRef = useRef<any>(null);
@@ -261,6 +264,29 @@ export default function Home() {
       setShowSlashMenu(false);
     }
   }, [slashActive]);
+
+  useEffect(() => {
+    const roomParam = searchParams.get("room");
+    if (!roomParam || roomCode || autoJoinAttempted) {
+      return;
+    }
+
+    setAutoJoinAttempted(true);
+    setIsBusy(true);
+    joinRoom({ roomCode: roomParam, playerName })
+      .then((joined) => {
+        setRoomCode(joined.roomCode);
+        setParticipantId(joined.participantId);
+      })
+      .catch((err) => {
+        setError(
+          err instanceof Error ? err.message : "Failed to join campaign."
+        );
+      })
+      .finally(() => {
+        setIsBusy(false);
+      });
+  }, [autoJoinAttempted, joinRoom, playerName, roomCode, searchParams]);
 
   const handleCreateRoom = async () => {
     setError(null);

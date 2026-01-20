@@ -64,6 +64,21 @@ export const listByRoomPublic = query({
   }
 });
 
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated.");
+    }
+
+    return ctx.db
+      .query("players")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+  }
+});
+
 export const createCharacter = mutation({
   args: {
     roomCode: v.string(),

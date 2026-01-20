@@ -27,7 +27,8 @@ export default defineSchema({
   })
     .index("by_room", ["roomCode", "updatedAt"])
     .index("by_room_player", ["roomCode", "playerName"])
-    .index("by_room_user", ["roomCode", "userId"]),
+    .index("by_room_user", ["roomCode", "userId"])
+    .index("by_user", ["userId", "updatedAt"]),
   messages: defineTable({
     roomCode: v.string(),
     playerName: v.string(),
