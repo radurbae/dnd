@@ -1140,6 +1140,42 @@ export default function Home() {
 
               <ResizablePanel defaultSize={60} minSize={40} className="bg-zinc-950">
                 <div className="relative flex h-full flex-col">
+                  {(leftCollapsed || rightCollapsed) && (
+                    <div className="pointer-events-none absolute left-0 right-0 top-3 z-20 flex items-center justify-between px-4">
+                      <div className="flex-1">
+                        {leftCollapsed && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              leftPanelRef.current?.expand?.();
+                              setLeftCollapsed(false);
+                            }}
+                            className="pointer-events-auto rounded-full border border-zinc-800 bg-zinc-900/80 text-zinc-200 shadow-lg shadow-black/40"
+                            aria-label="Open left panel"
+                          >
+                            <Menu className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex-1 text-right">
+                        {rightCollapsed && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              rightPanelRef.current?.expand?.();
+                              setRightCollapsed(false);
+                            }}
+                            className="pointer-events-auto rounded-full border border-zinc-800 bg-zinc-900/80 text-zinc-200 shadow-lg shadow-black/40"
+                            aria-label="Open right panel"
+                          >
+                            <Menu className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between border-b border-zinc-900 px-6 py-3">
                     <div>
                       <div className="text-xs uppercase text-zinc-500">
@@ -1149,36 +1185,8 @@ export default function Home() {
                         {room?.summary ? "The Oathbound" : "The Vision"}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500">
-                      {leftCollapsed && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            leftPanelRef.current?.expand?.();
-                            setLeftCollapsed(false);
-                          }}
-                          className="text-zinc-500"
-                          aria-label="Open left panel"
-                        >
-                          <Menu className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {rightCollapsed && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            rightPanelRef.current?.expand?.();
-                            setRightCollapsed(false);
-                          }}
-                          className="text-zinc-500"
-                          aria-label="Open right panel"
-                        >
-                          <Menu className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <span>{turnModeEnabled ? "Turn Mode" : "Free Play"}</span>
+                    <div className="text-xs text-zinc-500">
+                      {turnModeEnabled ? "Turn Mode" : "Free Play"}
                     </div>
                   </div>
                   {(room?.status ?? "lobby") === "lobby" && (
