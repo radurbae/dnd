@@ -1,20 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { Group, Panel, Separator } from "react-resizable-panels";
 
 import { cn } from "../../lib/utils";
 
-const ResizablePanelGroup = PanelGroup;
+const ResizablePanelGroup = Group;
 const ResizablePanel = Panel;
 
 const ResizableHandle = React.forwardRef<
   HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof PanelResizeHandle> & {
+  React.ComponentPropsWithoutRef<typeof Separator> & {
     withHandle?: boolean;
   }
 >(({ className, withHandle = false, ...props }, ref) => (
-  <PanelResizeHandle
+  <Separator
     ref={ref}
     className={cn(
       "relative flex w-px items-center justify-center bg-zinc-900",
@@ -27,7 +27,7 @@ const ResizableHandle = React.forwardRef<
     {withHandle && (
       <div className="h-6 w-2 rounded-full bg-zinc-700" />
     )}
-  </PanelResizeHandle>
+  </Separator>
 ));
 ResizableHandle.displayName = "ResizableHandle";
 

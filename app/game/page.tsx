@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useMutation, useQuery } from "convex/react";
 import {
   RedirectToSignIn,
@@ -158,8 +157,8 @@ export default function Home() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [hasGeneratedCharacter, setHasGeneratedCharacter] = useState(false);
-  const leftPanelRef = useRef<ImperativePanelHandle | null>(null);
-  const rightPanelRef = useRef<ImperativePanelHandle | null>(null);
+  const leftPanelRef = useRef<any>(null);
+  const rightPanelRef = useRef<any>(null);
 
   const createRoom = useMutation(api.rooms.createRoom);
   const joinRoom = useMutation(api.rooms.joinRoom);
@@ -651,9 +650,9 @@ export default function Home() {
               </section>
             </div>
           ) : (
-            <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanelGroup orientation="horizontal" className="h-full">
               <ResizablePanel
-                ref={leftPanelRef}
+                panelRef={leftPanelRef}
                 defaultSize={20}
                 minSize={8}
                 collapsible
@@ -670,7 +669,10 @@ export default function Home() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setLeftCollapsed(true)}
+                      onClick={() => {
+                        leftPanelRef.current?.collapse?.();
+                        setLeftCollapsed(true);
+                      }}
                       className="text-zinc-500"
                     >
                       <Menu className="h-4 w-4" />
@@ -961,7 +963,7 @@ export default function Home() {
               <ResizableHandle />
 
               <ResizablePanel
-                ref={rightPanelRef}
+                panelRef={rightPanelRef}
                 defaultSize={20}
                 minSize={8}
                 collapsible
@@ -978,7 +980,10 @@ export default function Home() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setRightCollapsed(true)}
+                      onClick={() => {
+                        rightPanelRef.current?.collapse?.();
+                        setRightCollapsed(true);
+                      }}
                       className="text-zinc-500"
                     >
                       <Menu className="h-4 w-4" />
