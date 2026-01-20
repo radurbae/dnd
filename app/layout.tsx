@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Providers from "./providers";
 import "./globals.css";
+import ConvexClientProvider from "./ConvexClientProvider";
 
 export const metadata: Metadata = {
   title: "Convex Real-Time Chat",
@@ -17,11 +17,11 @@ export default function RootLayout({
       <head>
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
         />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
   );

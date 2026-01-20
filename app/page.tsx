@@ -425,10 +425,10 @@ export default function Home() {
       <header className="grid">
         <div>
           <span className="badge">Real-time Convex Chat</span>
-          <h1 style={{ fontSize: "clamp(2rem, 4vw, 3.4rem)", marginTop: 16 }}>
+          <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl">
             Gather your party and start a room.
           </h1>
-          <p className="muted" style={{ marginTop: 12, maxWidth: 560 }}>
+          <p className="muted mt-3 max-w-xl">
             Your player name is <strong>{playerName}</strong>. Create a lobby or
             join with a code to sync messages instantly.
           </p>
@@ -436,16 +436,16 @@ export default function Home() {
       </header>
 
       {error && (
-        <div className="notice" style={{ marginTop: 24 }}>
+        <div className="notice mt-6">
           {error}
         </div>
       )}
 
       {!roomCode ? (
-        <section className="grid two" style={{ marginTop: 32 }}>
+        <section className="grid two mt-8">
           <div className="card">
-            <h2 style={{ fontSize: "1.6rem", marginBottom: 8 }}>Lobby</h2>
-            <p className="muted" style={{ marginBottom: 20 }}>
+            <h2 className="text-2xl">Lobby</h2>
+            <p className="muted mt-2 mb-5">
               Spin up a fresh room and invite up to 3 more players.
             </p>
             <button type="button" onClick={handleCreateRoom} disabled={isBusy}>
@@ -454,11 +454,11 @@ export default function Home() {
           </div>
 
           <div className="card">
-            <h2 style={{ fontSize: "1.6rem", marginBottom: 8 }}>Join a room</h2>
-            <p className="muted" style={{ marginBottom: 20 }}>
+            <h2 className="text-2xl">Join a room</h2>
+            <p className="muted mt-2 mb-5">
               Paste the room code your host shared.
             </p>
-            <div className="grid" style={{ gap: 12 }}>
+            <div className="grid">
               <input
                 placeholder="e.g. FJ2K8Q"
                 value={roomInput}
@@ -476,9 +476,9 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        <section className="grid three" style={{ marginTop: 32 }}>
+        <section className="grid three mt-8">
           <aside className="card player-sidebar">
-            <h3 style={{ fontSize: "1.3rem", marginBottom: 12 }}>
+            <h3 className="text-xl">
               Player Cards
             </h3>
             <div className="player-card-list">
@@ -513,8 +513,8 @@ export default function Home() {
 
           <div className="card chat-window">
             <div>
-              <h2 style={{ fontSize: "1.6rem" }}>Room {roomCode}</h2>
-              <p className="muted" style={{ marginTop: 6 }}>
+              <h2 className="text-2xl">Room {roomCode}</h2>
+              <p className="muted mt-2">
                 Messages sync instantly for everyone in this room.
               </p>
             </div>
@@ -659,18 +659,18 @@ export default function Home() {
 
           <div className="sidebar">
             <aside className="card">
-              <h3 style={{ fontSize: "1.3rem", marginBottom: 12 }}>
+              <h3 className="text-xl">
                 Room status
               </h3>
-              <div className="grid" style={{ gap: 12 }}>
+              <div className="grid">
                 <div>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
+                  <div className="muted text-sm">
                     Room code
                   </div>
                   <div className="room-code">{roomCode}</div>
                 </div>
               <div>
-                <div className="muted" style={{ fontSize: "0.9rem" }}>
+                <div className="muted text-sm">
                   Players ({participantCount}/4)
                 </div>
                 <div className="players">
@@ -683,7 +683,7 @@ export default function Home() {
               </div>
               {room?.leaderName && (
                 <div>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
+                  <div className="muted text-sm">
                     Party leader
                   </div>
                   <div className="player-pill">{room.leaderName}</div>
@@ -693,15 +693,15 @@ export default function Home() {
           </aside>
 
             <aside className="card">
-              <h3 style={{ fontSize: "1.3rem", marginBottom: 12 }}>
+              <h3 className="text-xl">
                 Game State
               </h3>
-              <div className="grid" style={{ gap: 16 }}>
+              <div className="grid">
                 <div>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
+                  <div className="muted text-sm">
                     Turn Mode
                   </div>
-                  <div className="toggle-row" style={{ marginTop: 8 }}>
+                  <div className="toggle-row mt-2">
                     <label className="toggle">
                       <input
                         type="checkbox"
@@ -726,7 +726,7 @@ export default function Home() {
                     </button>
                   </div>
                   {!isLeader && (
-                    <div className="muted" style={{ marginTop: 6 }}>
+                    <div className="muted mt-2">
                       Only the party leader can toggle Turn Mode or end the
                       turn.
                     </div>
@@ -734,7 +734,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
+                  <div className="muted text-sm">
                     Party roster
                   </div>
                   <div className="players">
@@ -747,10 +747,10 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
+                  <div className="muted text-sm">
                     Your character sheet
                   </div>
-                  <div className="grid" style={{ gap: 10, marginTop: 8 }}>
+                  <div className="grid mt-2">
                     <input
                       value={className}
                       onChange={(event) => setClassName(event.target.value)}
