@@ -1149,8 +1149,36 @@ export default function Home() {
                         {room?.summary ? "The Oathbound" : "The Vision"}
                       </div>
                     </div>
-                    <div className="text-xs text-zinc-500">
-                      {turnModeEnabled ? "Turn Mode" : "Free Play"}
+                    <div className="flex items-center gap-3 text-xs text-zinc-500">
+                      {leftCollapsed && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            leftPanelRef.current?.expand?.();
+                            setLeftCollapsed(false);
+                          }}
+                          className="text-zinc-500"
+                          aria-label="Open left panel"
+                        >
+                          <Menu className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {rightCollapsed && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            rightPanelRef.current?.expand?.();
+                            setRightCollapsed(false);
+                          }}
+                          className="text-zinc-500"
+                          aria-label="Open right panel"
+                        >
+                          <Menu className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <span>{turnModeEnabled ? "Turn Mode" : "Free Play"}</span>
                     </div>
                   </div>
                   {(room?.status ?? "lobby") === "lobby" && (
