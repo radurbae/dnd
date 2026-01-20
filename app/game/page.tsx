@@ -583,6 +583,16 @@ export default function Home() {
     []
   );
 
+  useEffect(() => {
+    const isCollapsed = leftPanelRef.current?.isCollapsed?.() ?? false;
+    setLeftCollapsed(isCollapsed);
+  }, []);
+
+  useEffect(() => {
+    const isCollapsed = rightPanelRef.current?.isCollapsed?.() ?? false;
+    setRightCollapsed(isCollapsed);
+  }, []);
+
   if (!isLoaded) {
     return <main className="grid place-items-center">Loading...</main>;
   }
@@ -657,8 +667,6 @@ export default function Home() {
                 minSize={8}
                 collapsible
                 collapsedSize={4}
-                onCollapse={() => setLeftCollapsed(true)}
-                onExpand={() => setLeftCollapsed(false)}
                 className="bg-zinc-900/50"
               >
                 <div className="flex h-full flex-col border-r border-zinc-900">
@@ -682,7 +690,10 @@ export default function Home() {
                     <div className="flex flex-1 flex-col items-center gap-4 px-2 pt-8 text-zinc-500">
                       <button
                         type="button"
-                        onClick={() => leftPanelRef.current?.expand?.()}
+                        onClick={() => {
+                          leftPanelRef.current?.expand?.();
+                          setLeftCollapsed(false);
+                        }}
                         className="rounded-full border border-zinc-800 p-2 text-zinc-500 hover:text-zinc-200"
                       >
                         <Menu className="h-4 w-4" />
@@ -968,8 +979,6 @@ export default function Home() {
                 minSize={8}
                 collapsible
                 collapsedSize={4}
-                onCollapse={() => setRightCollapsed(true)}
-                onExpand={() => setRightCollapsed(false)}
                 className="bg-zinc-900/50"
               >
                 <div className="flex h-full flex-col border-l border-zinc-900">
@@ -993,7 +1002,10 @@ export default function Home() {
                     <div className="flex flex-1 flex-col items-center gap-4 px-2 pt-8 text-zinc-500">
                       <button
                         type="button"
-                        onClick={() => rightPanelRef.current?.expand?.()}
+                        onClick={() => {
+                          rightPanelRef.current?.expand?.();
+                          setRightCollapsed(false);
+                        }}
                         className="rounded-full border border-zinc-800 p-2 text-zinc-500 hover:text-zinc-200"
                       >
                         <Menu className="h-4 w-4" />
