@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   const convex = new ConvexHttpClient(getConvexUrl());
   const [history, party, room] = await Promise.all([
     convex.query(api.messages.listRecent, { roomCode }),
-    convex.query(api.players.listByRoom, { roomCode }),
+    convex.query(api.players.listByRoomPublic, { roomCode }),
     convex.query(api.rooms.getByCode, { roomCode })
   ]);
 

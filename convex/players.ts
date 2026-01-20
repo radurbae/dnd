@@ -52,6 +52,18 @@ export const listByRoom = query({
   }
 });
 
+export const listByRoomPublic = query({
+  args: {
+    roomCode: v.string()
+  },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomCode", args.roomCode))
+      .collect();
+  }
+});
+
 export const createCharacter = mutation({
   args: {
     roomCode: v.string(),
