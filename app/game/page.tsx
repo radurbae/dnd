@@ -225,7 +225,7 @@ export default function Home() {
   const readyMap = useMemo(() => {
     const map = new Map<string, string>();
     party?.forEach((member) => {
-      map.set(member.playerName, member.status);
+      map.set(member.playerName, member.status ?? "Ready");
     });
     return map;
   }, [party]);
@@ -253,13 +253,13 @@ export default function Home() {
     }
 
     setClassName(playerSheet.className);
-    setRace(playerSheet.race);
+    setRace(playerSheet.race ?? "Human");
     setHp(playerSheet.hp);
     setInventory(playerSheet.inventory);
-    setStrength(playerSheet.strength);
-    setDexterity(playerSheet.dexterity);
-    setIntelligence(playerSheet.intelligence);
-    setStatusNote(playerSheet.status);
+    setStrength(playerSheet.strength ?? 12);
+    setDexterity(playerSheet.dexterity ?? 12);
+    setIntelligence(playerSheet.intelligence ?? 12);
+    setStatusNote(playerSheet.status ?? "Ready");
     setHasGeneratedCharacter(true);
   }, [playerSheet]);
 
