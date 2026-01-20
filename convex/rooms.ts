@@ -13,6 +13,37 @@ function generateRoomCode() {
   return code;
 }
 
+const PROLOGS = [
+  "The mists lift to reveal a forgotten vale of basalt spires and emberlit ruins.",
+  "A silver storm hangs over the coast, and every wave whispers a name.",
+  "Deep beneath the trade roads, a vault of singing stone wakes from its long sleep.",
+  "The kingdom's last lighthouse burns green tonight, calling travelers toward the shoals.",
+  "A city of brass gears turns for the first time in a century, and the streets hum."
+];
+
+const THREATS = [
+  "A pact-bound warband marches under a broken banner.",
+  "Something ancient stirs beneath the catacombs, rattling the saints' bones.",
+  "A jealous archmage has sealed the sun in a mirrored sky.",
+  "The forest has begun to move, one rooted step at a time.",
+  "A masked tribunal searches for a stolen relic that can rewrite fate."
+];
+
+const HOOKS = [
+  "A courier collapses at your feet with a map burned into their palm.",
+  "The innkeeper offers you free rooms if you investigate the lights in the marsh.",
+  "A child's song names each of you and the road you must walk.",
+  "An old rival arrives with a sealed letter from the crown.",
+  "A caravan master begs for protection on a cursed crossing."
+];
+
+function generateProlog() {
+  const prolog = PROLOGS[Math.floor(Math.random() * PROLOGS.length)];
+  const threat = THREATS[Math.floor(Math.random() * THREATS.length)];
+  const hook = HOOKS[Math.floor(Math.random() * HOOKS.length)];
+  return `${prolog} ${threat} ${hook}`;
+}
+
 export const createRoom = mutation({
   args: {
     leaderName: v.string()
@@ -49,6 +80,25 @@ export const createRoom = mutation({
       leaderName,
       turnMode: false
     });
+
+    const prolog = generateProlog();
+    await ctx.db.insert("messages", {
+      roomCode: code,
+      playerName: "World",
+      kind: "system",
+      body: prolog,
+      createdAt: Date.now()
+    });
+
+    await ctx.db
+      .query("rooms")
+      .withIndex("by_code", (q) => q.eq("code", code))
+      .first()
+      .then((room) => {
+        if (room) {
+          return ctx.db.patch(room._id, { messageCount: 1 });
+        }
+      });
 
     return { code };
   }
