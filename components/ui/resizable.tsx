@@ -8,14 +8,16 @@ import { cn } from "../../lib/utils";
 const ResizablePanelGroup = Group;
 const ResizablePanel = Panel;
 
-const ResizableHandle = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof Separator> & {
-    withHandle?: boolean;
-  }
->(({ className, withHandle = false, ...props }, ref) => (
+type ResizableHandleProps = React.ComponentPropsWithoutRef<typeof Separator> & {
+  withHandle?: boolean;
+};
+
+const ResizableHandle = ({
+  className,
+  withHandle = false,
+  ...props
+}: ResizableHandleProps) => (
   <Separator
-    ref={ref}
     className={cn(
       "relative flex w-px items-center justify-center bg-zinc-900",
       "after:absolute after:h-16 after:w-[3px] after:rounded-full after:bg-zinc-800",
@@ -28,7 +30,6 @@ const ResizableHandle = React.forwardRef<
       <div className="h-6 w-2 rounded-full bg-zinc-700" />
     )}
   </Separator>
-));
-ResizableHandle.displayName = "ResizableHandle";
+);
 
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle };
