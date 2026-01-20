@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   RedirectToSignIn,
@@ -9,6 +9,17 @@ import {
   UserButton,
   useUser
 } from "@clerk/nextjs";
+import { Menu, Upload, Dice6, ArrowUp } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from "../../components/ui/sheet";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../../components/ui/hover-card";
+import { Button } from "../../components/ui/button";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -108,6 +119,10 @@ function generateCharacter() {
   return { className, hp, inventory };
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export default function Home() {
   const { isLoaded, user } = useUser();
   const [fallbackName] = useState(() => createPlayerName());
@@ -131,9 +146,6 @@ export default function Home() {
   const [hp, setHp] = useState(12);
   const [inventory, setInventory] = useState("Torch, rope, rations");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
-  const [showDiceMenu, setShowDiceMenu] = useState(false);
-  const [diceRoll, setDiceRoll] = useState<number | null>(null);
-  const [diceStamp, setDiceStamp] = useState(0);
   const [hasGeneratedCharacter, setHasGeneratedCharacter] = useState(false);
 
   const createRoom = useMutation(api.rooms.createRoom);
@@ -303,7 +315,6 @@ export default function Home() {
       });
       setMessage("");
       setShowSlashMenu(false);
-      setShowDiceMenu(false);
       if (!turnModeEnabled) {
         triggerAiResponse(roomCode);
       }
@@ -323,8 +334,6 @@ export default function Home() {
     }
 
     const rollResult = result ?? Math.floor(Math.random() * sides) + 1;
-    setDiceRoll(rollResult);
-    setDiceStamp(Date.now());
 
     setError(null);
     setIsBusy(true);
@@ -337,7 +346,6 @@ export default function Home() {
       });
       setMessage("");
       setShowSlashMenu(false);
-      setShowDiceMenu(false);
       if (!turnModeEnabled) {
         triggerAiResponse(roomCode);
       }
@@ -484,7 +492,80 @@ export default function Home() {
   const handleSlashSelect = (command: string) => {
     setMessage(command);
     setShowSlashMenu(false);
-    setShowDiceMenu(false);
+  };
+
+  const partyLookup = useMemo(() => {
+    const lookup = new Map<
+      string,
+      { playerName: string; className: string; hp: number }
+    >();
+    party?.forEach((member) => {
+      lookup.set(member.playerName.toLowerCase(), member);
+    });
+    return lookup;
+  }, [party]);
+
+  const mentionRegex = useMemo(() => {
+    if (!party?.length) {
+      return null;
+    }
+    const names = [...party]
+      .map((member) => member.playerName)
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegex);
+    if (!names.length) {
+      return null;
+    }
+    return new RegExp(`(${names.join("|")})`, "gi");
+  }, [party]);
+
+  const renderWithMentions = (text: string) => {
+    if (!mentionRegex) {
+      return text;
+    }
+    const parts = text.split(mentionRegex);
+    return parts.map((part, index) => {
+      const key = `${part}-${index}`;
+      if (!part) {
+        return null;
+      }
+      const member = partyLookup.get(part.toLowerCase());
+      if (!member) {
+        return part;
+      }
+      const status = member.hp <= 3 ? "Wounded" : "Ready";
+      return (
+        <HoverCard key={key}>
+          <HoverCardTrigger className="cursor-help border-b border-zinc-600/60 text-zinc-100">
+            {part}
+          </HoverCardTrigger>
+          <HoverCardContent>
+            <div className="space-y-1">
+              <div className="text-sm font-medium text-zinc-100">
+                {member.playerName}
+              </div>
+              <div className="text-xs text-zinc-400">
+                Class: {member.className}
+              </div>
+              <div className="text-xs text-zinc-400">HP: {member.hp}</div>
+              <div className="text-xs text-zinc-400">
+                Status: {status}
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      );
+    });
+  };
+
+  const renderMarkdownWithMentions = (children: React.ReactNode) => {
+    return React.Children.map(children, (child) => {
+      if (typeof child === "string") {
+        return renderWithMentions(child);
+      }
+      return child;
+    });
   };
 
   const timeFormatter = useMemo(
@@ -502,433 +583,381 @@ export default function Home() {
         <RedirectToSignIn />
       </SignedOut>
       <SignedIn>
-        <header className="grid">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <span className="badge">Real-time Convex Chat</span>
-              <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl">
-                Gather your party and start a room.
-              </h1>
-              <p className="muted mt-3 max-w-xl">
-                Your player name is <strong>{playerName}</strong>. Create a lobby or
-                join with a code to sync messages instantly.
-              </p>
+        <div className="mx-auto w-full max-w-3xl px-6 pb-40 pt-8">
+          <div className="mb-8 flex items-center gap-3">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-zinc-200">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Campaign Menu</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-6">
+                  <div>
+                    <div className="text-xs uppercase text-zinc-500">
+                      Party status
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {party?.map((member) => (
+                        <div
+                          key={member._id}
+                          className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"
+                        >
+                          <div className="text-sm text-zinc-100">
+                            {member.playerName}
+                          </div>
+                          <div className="text-xs text-zinc-400">
+                            {member.className} · {member.hp} HP
+                          </div>
+                        </div>
+                      ))}
+                      {!party?.length && (
+                        <div className="text-xs text-zinc-500">
+                          No party members yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs uppercase text-zinc-500">
+                      Character sheet
+                    </div>
+                    {!playerSheet ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="text-xs text-zinc-500">
+                          Generated by the worldbuilder. Adjust if needed.
+                        </div>
+                        <input
+                          value={className}
+                          onChange={(event) => setClassName(event.target.value)}
+                          placeholder="Class"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          value={hp}
+                          onChange={(event) =>
+                            setHp(Number(event.target.value || 0))
+                          }
+                          placeholder="HP"
+                        />
+                        <textarea
+                          value={inventory}
+                          onChange={(event) => setInventory(event.target.value)}
+                          placeholder="Inventory"
+                        />
+                        <div className="grid gap-2">
+                          <Button onClick={handleCreateCharacter} disabled={isBusy}>
+                            Create character
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={handleRandomizeCharacter}
+                            disabled={isBusy}
+                          >
+                            Regenerate
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-3">
+                        <input
+                          value={className}
+                          onChange={(event) => setClassName(event.target.value)}
+                          placeholder="Class"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          value={hp}
+                          onChange={(event) =>
+                            setHp(Number(event.target.value || 0))
+                          }
+                          placeholder="HP"
+                        />
+                        <textarea
+                          value={inventory}
+                          onChange={(event) => setInventory(event.target.value)}
+                          placeholder="Inventory"
+                        />
+                        <Button
+                          variant="ghost"
+                          onClick={handleSaveCharacter}
+                          disabled={isBusy}
+                        >
+                          Save character
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-xs uppercase text-zinc-500">
+                      Room
+                    </div>
+                    <div className="mt-3 text-sm text-zinc-100">
+                      Code: {roomCode ?? "—"}
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      Players: {participantCount}/4
+                    </div>
+                    {room?.leaderName && (
+                      <div className="text-xs text-zinc-500">
+                        Leader: {room.leaderName}
+                      </div>
+                    )}
+                    <div className="mt-4">
+                      <div className="text-xs uppercase text-zinc-500">
+                        Turn Mode
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <label className="inline-flex items-center gap-2 text-xs text-zinc-400">
+                          <input
+                            type="checkbox"
+                            checked={turnModeEnabled}
+                            disabled={!isLeader || isBusy}
+                            onChange={(event) =>
+                              handleToggleTurnMode(event.target.checked)
+                            }
+                          />
+                          {turnModeEnabled ? "Enabled" : "Disabled"}
+                        </label>
+                        <Button
+                          variant="ghost"
+                          onClick={handleEndTurn}
+                          disabled={!turnModeEnabled || !isLeader || isAiStreaming}
+                        >
+                          End Turn
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <div className="flex-1">
+              <div className="text-xs uppercase text-zinc-500">
+                {roomCode ? `Room ${roomCode}` : "Lobby"}
+              </div>
+              <div className="text-lg font-medium text-zinc-100">
+                Dungeon Chronicle
+              </div>
             </div>
+
             <UserButton afterSignOutUrl="/sign-in" />
           </div>
-        </header>
 
-      {error && (
-        <div className="notice mt-6">
-          {error}
-        </div>
-      )}
-
-      {!roomCode ? (
-        <section className="grid two mt-8">
-          <div className="card">
-            <h2 className="text-2xl">Lobby</h2>
-            <p className="muted mt-2 mb-5">
-              Spin up a fresh room and invite up to 3 more players.
-            </p>
-            <button type="button" onClick={handleCreateRoom} disabled={isBusy}>
-              Create a room
-            </button>
-          </div>
-
-          <div className="card">
-            <h2 className="text-2xl">Join a room</h2>
-            <p className="muted mt-2 mb-5">
-              Paste the room code your host shared.
-            </p>
-            <div className="grid">
-              <input
-                placeholder="e.g. FJ2K8Q"
-                value={roomInput}
-                onChange={(event) => setRoomInput(event.target.value)}
-              />
-              <button
-                type="button"
-                onClick={handleJoinRoom}
-                className="secondary"
-                disabled={isBusy}
-              >
-                Join room
-              </button>
+          {error && (
+            <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-sm text-rose-300">
+              {error}
             </div>
-          </div>
-        </section>
-      ) : (
-        <section className="grid three mt-8">
-          <aside className="card player-sidebar">
-            <h3 className="text-xl">
-              Player Cards
-            </h3>
-            <div className="player-card-list">
-              {party?.map((member) => {
-                const hpPercent = Math.max(0, Math.min(100, member.hp));
-                return (
-                  <div key={member._id} className="player-card">
-                    <div className="player-avatar">
-                      {getInitials(member.playerName)}
-                    </div>
-                    <div className="player-info">
-                      <div className="player-name">{member.playerName}</div>
-                      <div className="hp-bar">
-                        <div
-                          className={`hp-fill ${
-                            hpPercent < 20 ? "danger" : ""
-                          }`}
-                          style={{ width: `${hpPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {!party?.length && (
-                <div className="muted">
-                  No character sheets yet. Add yours in Game State.
+          )}
+
+          {!roomCode ? (
+            <section className="space-y-6">
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
+                <h2 className="text-lg font-medium text-zinc-100">Lobby</h2>
+                <p className="mt-2 text-sm text-zinc-400">
+                  Start a room and invite your party.
+                </p>
+                <Button
+                  className="mt-4"
+                  onClick={handleCreateRoom}
+                  disabled={isBusy}
+                >
+                  Create a room
+                </Button>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
+                <h2 className="text-lg font-medium text-zinc-100">Join</h2>
+                <p className="mt-2 text-sm text-zinc-400">
+                  Enter a room code to connect.
+                </p>
+                <div className="mt-4 space-y-3">
+                  <input
+                    placeholder="e.g. FJ2K8Q"
+                    value={roomInput}
+                    onChange={(event) => setRoomInput(event.target.value)}
+                  />
+                  <Button
+                    variant="ghost"
+                    onClick={handleJoinRoom}
+                    disabled={isBusy}
+                  >
+                    Join room
+                  </Button>
                 </div>
-              )}
-            </div>
-          </aside>
-
-          <div className="card chat-window">
-            <div>
-              <h2 className="text-2xl">Room {roomCode}</h2>
-              <p className="muted mt-2">
-                Messages sync instantly for everyone in this room.
-              </p>
-            </div>
-
-            <div className="message-list">
-              {messages?.length ? (
-                messages.map((msg) => (
-                  <div key={msg._id} className="message-row mb-6">
-                    <div
-                      className={`message ${
-                        msg.kind === "system"
-                          ? "system"
-                          : msg.playerName === "Dungeon Master"
-                          ? "dm"
-                          : "user"
-                      }`}
-                    >
-                      <div className="message-avatar">
-                        {getInitials(
-                          msg.kind === "system" ? "System" : msg.playerName
+              </div>
+            </section>
+          ) : (
+            <section className="space-y-8">
+              <div className="space-y-6">
+                {messages?.length ? (
+                  messages.map((msg) => {
+                    const isSystem = msg.kind === "system";
+                    const isDm = msg.playerName === "Dungeon Master";
+                    const rollMatch = isSystem
+                      ? msg.body.match(/rolled\\s+d\\d+:\\s*(\\d+)/i)
+                      : null;
+                    return (
+                      <div key={msg._id} className="mb-6">
+                        {isSystem ? (
+                          <div className="text-xs text-zinc-500">
+                            {rollMatch ? (
+                              <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-300">
+                                [Roll: {rollMatch[1]}]
+                              </span>
+                            ) : (
+                              msg.body
+                            )}
+                          </div>
+                        ) : isDm ? (
+                          <div className="border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
+                            <div className="text-xs uppercase text-zinc-500">
+                              Dungeon Master · {timeFormatter.format(msg.createdAt)}
+                            </div>
+                            <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-200">
+                              <ReactMarkdown
+                                components={{
+                                  h3: ({ children }) => (
+                                    <h3 className="text-base font-semibold text-zinc-100">
+                                      {renderMarkdownWithMentions(children)}
+                                    </h3>
+                                  ),
+                                  p: ({ children }) => (
+                                    <p>{renderMarkdownWithMentions(children)}</p>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li>{renderMarkdownWithMentions(children)}</li>
+                                  )
+                                }}
+                              >
+                                {msg.body}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-4">
+                            <div className="h-10 w-10 rounded-xl bg-zinc-900 text-xs font-medium text-zinc-200 ring-1 ring-zinc-800 flex items-center justify-center">
+                              {getInitials(msg.playerName)}
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-sm text-zinc-100">
+                                {msg.playerName}
+                              </div>
+                              <div className="text-xs text-zinc-500">
+                                {timeFormatter.format(msg.createdAt)}
+                              </div>
+                              <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-300">
+                                {renderWithMentions(msg.body)}
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="message-content">
-                        <div className="message-header">
-                          <span className="message-name">
-                            {msg.kind === "system"
-                              ? "System Event"
-                              : msg.playerName}
-                          </span>
-                          <span className="message-time">
-                            {timeFormatter.format(msg.createdAt)}
-                          </span>
-                        </div>
-                        <div className="message-body">
-                          {msg.kind === "system"
-                            ? `${msg.playerName} ${msg.body}`
-                            : msg.body}
-                        </div>
-                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-zinc-500">
+                    No messages yet.
+                  </div>
+                )}
+                {roomCode && (isAiStreaming || aiStream) && (
+                  <div className="mb-6 border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
+                    <div className="text-xs uppercase text-zinc-500">
+                      Dungeon Master · streaming
+                    </div>
+                    <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-200">
+                      {aiStream ||
+                        "The Dungeon Master is plotting the next twist..."}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="muted">No messages yet. Break the silence!</div>
-              )}
-              {roomCode && (isAiStreaming || aiStream) && (
-                <div className="message-row mb-6">
-                  <div className="message dm">
-                    <div className="message-avatar">DM</div>
-                    <div className="message-content">
-                      <div className="message-header">
-                        <span className="message-name">Dungeon Master</span>
-                        <span className="message-time">streaming</span>
-                      </div>
-                      <div className="message-body">
-                        {aiStream ||
-                          "The Dungeon Master is plotting the next twist..."}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {diceRoll !== null && (
-              <div
-                key={diceStamp}
-                className={`dice-tray ${
-                  diceRoll === 20 ? "crit" : diceRoll === 1 ? "fail" : ""
-                }`}
-              >
-                <div className="dice-number">{diceRoll}</div>
-                <div className="dice-label">D20 Roll</div>
+                )}
               </div>
-            )}
 
-            <form
-              className="message-form composer mb-6"
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleSendMessage();
-              }}
-            >
-              <div className="composer-inner">
-                <div className="composer-input">
-                  <textarea
-                    placeholder="Share a move, strategy, or greeting..."
-                    value={message}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      setMessage(nextValue);
-                      setShowSlashMenu(nextValue.trim().startsWith("/"));
-                      setShowDiceMenu(false);
-                    }}
-                  />
-                  {showSlashMenu && (
-                    <div className="composer-menu">
-                      <button
-                        type="button"
-                        onClick={() => handleSlashSelect("/roll d20")}
-                      >
-                        /roll <span className="muted">Roll a d20</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSlashSelect("/whisper ")}
-                      >
-                        /whisper <span className="muted">Private note</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSlashSelect("/inventory ")}
-                      >
-                        /inventory <span className="muted">List gear</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="composer-actions">
-                  <button type="submit" disabled={!canSend}>
-                    Send message
-                  </button>
-                  <div className="dice-wrap">
+              <form
+                className="fixed inset-x-0 bottom-6 z-20 mx-auto w-full max-w-3xl px-6"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSendMessage();
+                }}
+              >
+                <div className="flex items-end gap-3 rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 shadow-lg shadow-black/40 focus-within:ring-1 focus-within:ring-white/20">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="secondary"
+                      className="text-zinc-500 transition hover:text-zinc-200"
+                      onClick={() => sendRoll(20)}
                       aria-label="Quick roll"
-                      onClick={() => setShowDiceMenu((prev) => !prev)}
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                        focusable="false"
-                      >
-                        <path d="M3.5 7.2 12 2.5l8.5 4.7v9.6L12 21.5 3.5 16.8V7.2Z" />
-                        <path d="M12 2.5v9.8l8.5-5.1M12 12.3 3.5 7.2" />
-                        <circle cx="12" cy="12.2" r="1.2" />
-                      </svg>
+                      <Dice6 className="h-5 w-5" />
                     </button>
-                    {showDiceMenu && (
-                      <div className="composer-menu dice-menu">
-                        <button type="button" onClick={() => sendRoll(20)}>
-                          Roll d20
+                    <button
+                      type="button"
+                      className="text-zinc-500 transition hover:text-zinc-200"
+                      aria-label="Upload"
+                    >
+                      <Upload className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1">
+                    <textarea
+                      className="min-h-[44px] w-full resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+                      placeholder="Write a message..."
+                      value={message}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setMessage(nextValue);
+                        setShowSlashMenu(nextValue.trim().startsWith("/"));
+                      }}
+                    />
+                    {showSlashMenu && (
+                      <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-2 text-sm text-zinc-300">
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
+                          onClick={() => handleSlashSelect("/roll d20")}
+                        >
+                          /roll <span className="text-xs text-zinc-500">Roll a d20</span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleSlashSelect("/roll d20")}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
+                          onClick={() => handleSlashSelect("/whisper ")}
                         >
-                          Insert /roll
+                          /whisper <span className="text-xs text-zinc-500">Private note</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
+                          onClick={() => handleSlashSelect("/inventory ")}
+                        >
+                          /inventory <span className="text-xs text-zinc-500">List gear</span>
                         </button>
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-            </form>
-          </div>
 
-          <div className="sidebar">
-            <aside className="card">
-              <h3 className="text-xl">
-                Room status
-              </h3>
-              <div className="grid">
-                <div>
-                  <div className="muted text-sm">
-                    Room code
-                  </div>
-                  <div className="room-code">{roomCode}</div>
+                  <button
+                    type="submit"
+                    disabled={!canSend}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-zinc-900 disabled:opacity-50"
+                    aria-label="Send"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
                 </div>
-              <div>
-                <div className="muted text-sm">
-                  Players ({participantCount}/4)
-                </div>
-                <div className="players">
-                  {participants?.map((participant) => (
-                    <span key={participant._id} className="player-pill">
-                      {participant.playerName}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {room?.leaderName && (
-                <div>
-                  <div className="muted text-sm">
-                    Party leader
-                  </div>
-                  <div className="player-pill">{room.leaderName}</div>
-                </div>
-              )}
-            </div>
-          </aside>
-
-            <aside className="card">
-              <h3 className="text-xl">
-                Game State
-              </h3>
-              <div className="grid">
-                <div>
-                  <div className="muted text-sm">
-                    Turn Mode
-                  </div>
-                  <div className="toggle-row mt-2">
-                    <label className="toggle">
-                      <input
-                        type="checkbox"
-                        checked={turnModeEnabled}
-                        disabled={!isLeader || isBusy}
-                        onChange={(event) =>
-                          handleToggleTurnMode(event.target.checked)
-                        }
-                      />
-                      <span className="toggle-track" aria-hidden="true" />
-                      <span className="toggle-label">
-                        {turnModeEnabled ? "Enabled" : "Disabled"}
-                      </span>
-                    </label>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={handleEndTurn}
-                      disabled={!turnModeEnabled || !isLeader || isAiStreaming}
-                    >
-                      End Turn
-                    </button>
-                  </div>
-                  {!isLeader && (
-                    <div className="muted mt-2">
-                      Only the party leader can toggle Turn Mode or end the
-                      turn.
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div className="muted text-sm">
-                    Party roster
-                  </div>
-                  <div className="players">
-                    {party?.map((member) => (
-                      <span key={member._id} className="player-pill">
-                        {member.playerName} · {member.className} · {member.hp} HP
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="muted text-sm">
-                    Your character sheet
-                  </div>
-                  {!playerSheet ? (
-                    <div className="grid mt-2">
-                      <div className="muted text-sm">
-                        Generated by the worldbuilder. Tweak if you like.
-                      </div>
-                      <input
-                        value={className}
-                        onChange={(event) => setClassName(event.target.value)}
-                        placeholder="Class"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        value={hp}
-                        onChange={(event) =>
-                          setHp(Number(event.target.value || 0))
-                        }
-                        placeholder="HP"
-                      />
-                      <textarea
-                        value={inventory}
-                        onChange={(event) => setInventory(event.target.value)}
-                        placeholder="Inventory"
-                      />
-                      <div className="grid">
-                        <button
-                          type="button"
-                          onClick={handleCreateCharacter}
-                          disabled={isBusy}
-                        >
-                          Create character
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary"
-                          onClick={handleRandomizeCharacter}
-                          disabled={isBusy}
-                        >
-                          Regenerate
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid mt-2">
-                      <input
-                        value={className}
-                        onChange={(event) => setClassName(event.target.value)}
-                        placeholder="Class"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        value={hp}
-                        onChange={(event) =>
-                          setHp(Number(event.target.value || 0))
-                        }
-                        placeholder="HP"
-                      />
-                      <textarea
-                        value={inventory}
-                        onChange={(event) => setInventory(event.target.value)}
-                        placeholder="Inventory"
-                      />
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={handleSaveCharacter}
-                        disabled={isBusy}
-                      >
-                        Save character
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
-          </div>
-        </section>
-      )}
+              </form>
+            </section>
+          )}
+        </div>
       </SignedIn>
     </main>
   );
