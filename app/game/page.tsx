@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useMutation, useQuery } from "convex/react";
 import {
   RedirectToSignIn,
@@ -9,17 +10,25 @@ import {
   UserButton,
   useUser
 } from "@clerk/nextjs";
-import { Menu, Upload, Dice6, ArrowUp } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger
-} from "../../components/ui/sheet";
+  ArrowUp,
+  Backpack,
+  Dice6,
+  Menu,
+  ScrollText,
+  Upload,
+  Users
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../../components/ui/hover-card";
 import { Button } from "../../components/ui/button";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle
+} from "../../components/ui/resizable";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -65,7 +74,7 @@ const INVENTORY_SETS = [
   "Herbal kit, compass, bedroll",
   "Throwing knives, lockpicks, smoke bomb",
   "Spellbook, ink, crystal focus",
-  "Shield, whetstone, traveler’s cloak",
+  "Shield, whetstone, traveler's cloak",
   "Map case, chalk, grappling hook"
 ];
 
@@ -146,7 +155,11 @@ export default function Home() {
   const [hp, setHp] = useState(12);
   const [inventory, setInventory] = useState("Torch, rope, rations");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const [hasGeneratedCharacter, setHasGeneratedCharacter] = useState(false);
+  const leftPanelRef = useRef<ImperativePanelHandle | null>(null);
+  const rightPanelRef = useRef<ImperativePanelHandle | null>(null);
 
   const createRoom = useMutation(api.rooms.createRoom);
   const joinRoom = useMutation(api.rooms.joinRoom);
@@ -549,9 +562,7 @@ export default function Home() {
                 Class: {member.className}
               </div>
               <div className="text-xs text-zinc-400">HP: {member.hp}</div>
-              <div className="text-xs text-zinc-400">
-                Status: {status}
-              </div>
+              <div className="text-xs text-zinc-400">Status: {status}</div>
             </div>
           </HoverCardContent>
         </HoverCard>
@@ -583,379 +594,461 @@ export default function Home() {
         <RedirectToSignIn />
       </SignedOut>
       <SignedIn>
-        <div className="mx-auto w-full max-w-3xl px-6 pb-40 pt-8">
-          <div className="mb-8 flex items-center gap-3">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-zinc-200">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Campaign Menu</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-6">
-                  <div>
+        <div className="h-screen w-full">
+          {!roomCode ? (
+            <div className="mx-auto w-full max-w-3xl px-6 pb-24 pt-12">
+              <div className="mb-8 flex items-center justify-between">
+                <div>
+                  <div className="text-xs uppercase text-zinc-500">Lobby</div>
+                  <div className="text-lg font-medium text-zinc-100">
+                    Dungeon Chronicle
+                  </div>
+                </div>
+                <UserButton afterSignOutUrl="/sign-in" />
+              </div>
+
+              {error && (
+                <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-sm text-rose-300">
+                  {error}
+                </div>
+              )}
+
+              <section className="space-y-6">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
+                  <h2 className="text-lg font-medium text-zinc-100">Lobby</h2>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Start a room and invite your party.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    onClick={handleCreateRoom}
+                    disabled={isBusy}
+                  >
+                    Create a room
+                  </Button>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
+                  <h2 className="text-lg font-medium text-zinc-100">Join</h2>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Enter a room code to connect.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      placeholder="e.g. FJ2K8Q"
+                      value={roomInput}
+                      onChange={(event) => setRoomInput(event.target.value)}
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={handleJoinRoom}
+                      disabled={isBusy}
+                    >
+                      Join room
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          ) : (
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel
+                ref={leftPanelRef}
+                defaultSize={20}
+                minSize={8}
+                collapsible
+                collapsedSize={4}
+                onCollapse={() => setLeftCollapsed(true)}
+                onExpand={() => setLeftCollapsed(false)}
+                className="bg-zinc-900/50"
+              >
+                <div className="flex h-full flex-col border-r border-zinc-900">
+                  <div className="flex items-center justify-between px-4 py-3">
                     <div className="text-xs uppercase text-zinc-500">
-                      Party status
+                      The Soul
                     </div>
-                    <div className="mt-3 space-y-3">
-                      {party?.map((member) => (
-                        <div
-                          key={member._id}
-                          className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"
-                        >
-                          <div className="text-sm text-zinc-100">
-                            {member.playerName}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setLeftCollapsed(true)}
+                      className="text-zinc-500"
+                    >
+                      <Menu className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {leftCollapsed ? (
+                    <div className="flex flex-1 flex-col items-center gap-4 px-2 pt-8 text-zinc-500">
+                      <button
+                        type="button"
+                        onClick={() => leftPanelRef.current?.expand?.()}
+                        className="rounded-full border border-zinc-800 p-2 text-zinc-500 hover:text-zinc-200"
+                      >
+                        <Menu className="h-4 w-4" />
+                      </button>
+                      <ScrollText className="h-4 w-4" />
+                      <Backpack className="h-4 w-4" />
+                    </div>
+                  ) : (
+                    <div className="flex-1 px-4 pb-6">
+                      <Tabs defaultValue="stats">
+                        <TabsList className="border-0 bg-transparent">
+                          <TabsTrigger value="stats">Stats</TabsTrigger>
+                          <TabsTrigger value="backpack">Backpack</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="stats">
+                          <div className="space-y-4 text-sm text-zinc-400">
+                            <div className="text-xs uppercase text-zinc-500">
+                              Class
+                            </div>
+                            <div className="text-sm text-zinc-200">
+                              {className}
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-xs uppercase">
+                                <span>HP</span>
+                                <span>{hp}</span>
+                              </div>
+                              <div className="h-2 w-full rounded-full bg-zinc-800">
+                                <div
+                                  className="h-2 rounded-full bg-zinc-500"
+                                  style={{
+                                    width: `${Math.min(100, (hp / 20) * 100)}%`
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span>STR</span>
+                                <span>12</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span>DEX</span>
+                                <span>11</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span>INT</span>
+                                <span>14</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {!playerSheet ? (
+                                <Button
+                                  variant="ghost"
+                                  onClick={handleCreateCharacter}
+                                  disabled={isBusy}
+                                >
+                                  Create character
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  onClick={handleSaveCharacter}
+                                  disabled={isBusy}
+                                >
+                                  Save character
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                onClick={handleRandomizeCharacter}
+                                disabled={isBusy}
+                              >
+                                Regenerate
+                              </Button>
+                            </div>
                           </div>
-                          <div className="text-xs text-zinc-400">
-                            {member.className} · {member.hp} HP
-                          </div>
+                        </TabsContent>
+                        <TabsContent value="backpack">
+                          <ul className="space-y-2 text-sm text-zinc-400">
+                            {inventory.split(",").map((item) => (
+                              <li key={item.trim()}>{item.trim()}</li>
+                            ))}
+                          </ul>
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+                  )}
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle />
+
+              <ResizablePanel defaultSize={60} minSize={40} className="bg-zinc-950">
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-center justify-between border-b border-zinc-900 px-6 py-3">
+                    <div>
+                      <div className="text-xs uppercase text-zinc-500">
+                        {room?.summary ? "Campaign" : "Untitled Campaign"}
+                      </div>
+                      <div className="text-base text-zinc-100">
+                        {room?.summary ? "The Oathbound" : "The Vision"}
+                      </div>
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      {turnModeEnabled ? "Turn Mode" : "Free Play"}
+                    </div>
+                  </div>
+
+                  <ScrollArea className="flex-1 px-6">
+                    <div className="mx-auto w-full max-w-3xl py-8">
+                      {error && (
+                        <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-sm text-rose-300">
+                          {error}
                         </div>
-                      ))}
-                      {!party?.length && (
-                        <div className="text-xs text-zinc-500">
-                          No party members yet.
+                      )}
+                      {messages?.length ? (
+                        messages.map((msg) => {
+                          const isSystem = msg.kind === "system";
+                          const isDm = msg.playerName === "Dungeon Master";
+                          const rollMatch = isSystem
+                            ? msg.body.match(/rolled\s+d\d+:\s*(\d+)/i)
+                            : null;
+                          return (
+                            <div key={msg._id} className="mb-6">
+                              {isSystem ? (
+                                <div className="text-xs text-zinc-500">
+                                  {rollMatch ? (
+                                    <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-300">
+                                      [Roll: {rollMatch[1]}]
+                                    </span>
+                                  ) : (
+                                    msg.body
+                                  )}
+                                </div>
+                              ) : isDm ? (
+                                <div className="border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
+                                  <div className="text-xs uppercase text-zinc-500">
+                                    Dungeon Master · {timeFormatter.format(msg.createdAt)}
+                                  </div>
+                                  <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-200">
+                                    <ReactMarkdown
+                                      components={{
+                                        h3: ({ children }) => (
+                                          <h3 className="text-base font-semibold text-zinc-100">
+                                            {renderMarkdownWithMentions(children)}
+                                          </h3>
+                                        ),
+                                        p: ({ children }) => (
+                                          <p>{renderMarkdownWithMentions(children)}</p>
+                                        ),
+                                        li: ({ children }) => (
+                                          <li>{renderMarkdownWithMentions(children)}</li>
+                                        )
+                                      }}
+                                    >
+                                      {msg.body}
+                                    </ReactMarkdown>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start gap-4">
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-xs font-medium text-zinc-200 ring-1 ring-zinc-800">
+                                    {getInitials(msg.playerName)}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="text-sm text-zinc-100">
+                                      {msg.playerName}
+                                    </div>
+                                    <div className="text-xs text-zinc-500">
+                                      {timeFormatter.format(msg.createdAt)}
+                                    </div>
+                                    <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-300">
+                                      {renderWithMentions(msg.body)}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-sm text-zinc-500">
+                          No messages yet.
+                        </div>
+                      )}
+                      {roomCode && (isAiStreaming || aiStream) && (
+                        <div className="mb-6 border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
+                          <div className="text-xs uppercase text-zinc-500">
+                            Dungeon Master · streaming
+                          </div>
+                          <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-200">
+                            {aiStream ||
+                              "The Dungeon Master is plotting the next twist..."}
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
+                  </ScrollArea>
 
-                  <div>
-                    <div className="text-xs uppercase text-zinc-500">
-                      Character sheet
-                    </div>
-                    {!playerSheet ? (
-                      <div className="mt-3 space-y-3">
-                        <div className="text-xs text-zinc-500">
-                          Generated by the worldbuilder. Adjust if needed.
-                        </div>
-                        <input
-                          value={className}
-                          onChange={(event) => setClassName(event.target.value)}
-                          placeholder="Class"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          value={hp}
-                          onChange={(event) =>
-                            setHp(Number(event.target.value || 0))
-                          }
-                          placeholder="HP"
-                        />
-                        <textarea
-                          value={inventory}
-                          onChange={(event) => setInventory(event.target.value)}
-                          placeholder="Inventory"
-                        />
-                        <div className="grid gap-2">
-                          <Button onClick={handleCreateCharacter} disabled={isBusy}>
-                            Create character
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={handleRandomizeCharacter}
-                            disabled={isBusy}
-                          >
-                            Regenerate
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-3 space-y-3">
-                        <input
-                          value={className}
-                          onChange={(event) => setClassName(event.target.value)}
-                          placeholder="Class"
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          value={hp}
-                          onChange={(event) =>
-                            setHp(Number(event.target.value || 0))
-                          }
-                          placeholder="HP"
-                        />
-                        <textarea
-                          value={inventory}
-                          onChange={(event) => setInventory(event.target.value)}
-                          placeholder="Inventory"
-                        />
-                        <Button
-                          variant="ghost"
-                          onClick={handleSaveCharacter}
-                          disabled={isBusy}
-                        >
-                          Save character
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="text-xs uppercase text-zinc-500">
-                      Room
-                    </div>
-                    <div className="mt-3 text-sm text-zinc-100">
-                      Code: {roomCode ?? "—"}
-                    </div>
-                    <div className="text-xs text-zinc-500">
-                      Players: {participantCount}/4
-                    </div>
-                    {room?.leaderName && (
-                      <div className="text-xs text-zinc-500">
-                        Leader: {room.leaderName}
-                      </div>
-                    )}
-                    <div className="mt-4">
-                      <div className="text-xs uppercase text-zinc-500">
-                        Turn Mode
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <label className="inline-flex items-center gap-2 text-xs text-zinc-400">
-                          <input
-                            type="checkbox"
-                            checked={turnModeEnabled}
-                            disabled={!isLeader || isBusy}
-                            onChange={(event) =>
-                              handleToggleTurnMode(event.target.checked)
-                            }
-                          />
-                          {turnModeEnabled ? "Enabled" : "Disabled"}
-                        </label>
-                        <Button
-                          variant="ghost"
-                          onClick={handleEndTurn}
-                          disabled={!turnModeEnabled || !isLeader || isAiStreaming}
-                        >
-                          End Turn
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <div className="flex-1">
-              <div className="text-xs uppercase text-zinc-500">
-                {roomCode ? `Room ${roomCode}` : "Lobby"}
-              </div>
-              <div className="text-lg font-medium text-zinc-100">
-                Dungeon Chronicle
-              </div>
-            </div>
-
-            <UserButton afterSignOutUrl="/sign-in" />
-          </div>
-
-          {error && (
-            <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-sm text-rose-300">
-              {error}
-            </div>
-          )}
-
-          {!roomCode ? (
-            <section className="space-y-6">
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
-                <h2 className="text-lg font-medium text-zinc-100">Lobby</h2>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Start a room and invite your party.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={handleCreateRoom}
-                  disabled={isBusy}
-                >
-                  Create a room
-                </Button>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
-                <h2 className="text-lg font-medium text-zinc-100">Join</h2>
-                <p className="mt-2 text-sm text-zinc-400">
-                  Enter a room code to connect.
-                </p>
-                <div className="mt-4 space-y-3">
-                  <input
-                    placeholder="e.g. FJ2K8Q"
-                    value={roomInput}
-                    onChange={(event) => setRoomInput(event.target.value)}
-                  />
-                  <Button
-                    variant="ghost"
-                    onClick={handleJoinRoom}
-                    disabled={isBusy}
+                  <form
+                    className="absolute inset-x-0 bottom-6 mx-auto w-full max-w-3xl px-6"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      handleSendMessage();
+                    }}
                   >
-                    Join room
-                  </Button>
-                </div>
-              </div>
-            </section>
-          ) : (
-            <section className="space-y-8">
-              <div className="space-y-6">
-                {messages?.length ? (
-                  messages.map((msg) => {
-                    const isSystem = msg.kind === "system";
-                    const isDm = msg.playerName === "Dungeon Master";
-                    const rollMatch = isSystem
-                      ? msg.body.match(/rolled\\s+d\\d+:\\s*(\\d+)/i)
-                      : null;
-                    return (
-                      <div key={msg._id} className="mb-6">
-                        {isSystem ? (
-                          <div className="text-xs text-zinc-500">
-                            {rollMatch ? (
-                              <span className="inline-flex items-center rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-300">
-                                [Roll: {rollMatch[1]}]
-                              </span>
-                            ) : (
-                              msg.body
-                            )}
-                          </div>
-                        ) : isDm ? (
-                          <div className="border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
-                            <div className="text-xs uppercase text-zinc-500">
-                              Dungeon Master · {timeFormatter.format(msg.createdAt)}
-                            </div>
-                            <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-200">
-                              <ReactMarkdown
-                                components={{
-                                  h3: ({ children }) => (
-                                    <h3 className="text-base font-semibold text-zinc-100">
-                                      {renderMarkdownWithMentions(children)}
-                                    </h3>
-                                  ),
-                                  p: ({ children }) => (
-                                    <p>{renderMarkdownWithMentions(children)}</p>
-                                  ),
-                                  li: ({ children }) => (
-                                    <li>{renderMarkdownWithMentions(children)}</li>
-                                  )
-                                }}
-                              >
-                                {msg.body}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-start gap-4">
-                            <div className="h-10 w-10 rounded-xl bg-zinc-900 text-xs font-medium text-zinc-200 ring-1 ring-zinc-800 flex items-center justify-center">
-                              {getInitials(msg.playerName)}
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-sm text-zinc-100">
-                                {msg.playerName}
-                              </div>
-                              <div className="text-xs text-zinc-500">
-                                {timeFormatter.format(msg.createdAt)}
-                              </div>
-                              <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-300">
-                                {renderWithMentions(msg.body)}
-                              </div>
-                            </div>
+                    <div className="flex items-end gap-3 rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 shadow-lg shadow-black/40 focus-within:ring-1 focus-within:ring-white/20">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="text-zinc-500 transition hover:text-zinc-200"
+                          onClick={() => sendRoll(20)}
+                          aria-label="Quick roll"
+                        >
+                          <Dice6 className="h-5 w-5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="text-zinc-500 transition hover:text-zinc-200"
+                          aria-label="Upload"
+                        >
+                          <Upload className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <div className="flex-1">
+                        <textarea
+                          className="min-h-[44px] w-full resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+                          placeholder="Write a message..."
+                          value={message}
+                          onChange={(event) => {
+                            const nextValue = event.target.value;
+                            setMessage(nextValue);
+                            setShowSlashMenu(nextValue.trim().startsWith("/"));
+                          }}
+                        />
+                        {showSlashMenu && (
+                          <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-2 text-sm text-zinc-300">
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
+                              onClick={() => handleSlashSelect("/roll d20")}
+                            >
+                              /roll <span className="text-xs text-zinc-500">Roll a d20</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
+                              onClick={() => handleSlashSelect("/whisper ")}
+                            >
+                              /whisper <span className="text-xs text-zinc-500">Private note</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
+                              onClick={() => handleSlashSelect("/inventory ")}
+                            >
+                              /inventory <span className="text-xs text-zinc-500">List gear</span>
+                            </button>
                           </div>
                         )}
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-sm text-zinc-500">
-                    No messages yet.
-                  </div>
-                )}
-                {roomCode && (isAiStreaming || aiStream) && (
-                  <div className="mb-6 border-l-2 border-zinc-700 bg-gradient-to-r from-zinc-800/40 to-transparent pl-4">
-                    <div className="text-xs uppercase text-zinc-500">
-                      Dungeon Master · streaming
+
+                      <button
+                        type="submit"
+                        disabled={!canSend}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-zinc-900 disabled:opacity-50"
+                        aria-label="Send"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
                     </div>
-                    <div className="prose prose-invert prose-zinc mt-2 max-w-none text-zinc-200">
-                      {aiStream ||
-                        "The Dungeon Master is plotting the next twist..."}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <form
-                className="fixed inset-x-0 bottom-6 z-20 mx-auto w-full max-w-3xl px-6"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  handleSendMessage();
-                }}
-              >
-                <div className="flex items-end gap-3 rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 shadow-lg shadow-black/40 focus-within:ring-1 focus-within:ring-white/20">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="text-zinc-500 transition hover:text-zinc-200"
-                      onClick={() => sendRoll(20)}
-                      aria-label="Quick roll"
-                    >
-                      <Dice6 className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="text-zinc-500 transition hover:text-zinc-200"
-                      aria-label="Upload"
-                    >
-                      <Upload className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  <div className="flex-1">
-                    <textarea
-                      className="min-h-[44px] w-full resize-none bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
-                      placeholder="Write a message..."
-                      value={message}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setMessage(nextValue);
-                        setShowSlashMenu(nextValue.trim().startsWith("/"));
-                      }}
-                    />
-                    {showSlashMenu && (
-                      <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-2 text-sm text-zinc-300">
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
-                          onClick={() => handleSlashSelect("/roll d20")}
-                        >
-                          /roll <span className="text-xs text-zinc-500">Roll a d20</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
-                          onClick={() => handleSlashSelect("/whisper ")}
-                        >
-                          /whisper <span className="text-xs text-zinc-500">Private note</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-zinc-800/70"
-                          onClick={() => handleSlashSelect("/inventory ")}
-                        >
-                          /inventory <span className="text-xs text-zinc-500">List gear</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!canSend}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-zinc-900 disabled:opacity-50"
-                    aria-label="Send"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
+                  </form>
                 </div>
-              </form>
-            </section>
+              </ResizablePanel>
+
+              <ResizableHandle />
+
+              <ResizablePanel
+                ref={rightPanelRef}
+                defaultSize={20}
+                minSize={8}
+                collapsible
+                collapsedSize={4}
+                onCollapse={() => setRightCollapsed(true)}
+                onExpand={() => setRightCollapsed(false)}
+                className="bg-zinc-900/50"
+              >
+                <div className="flex h-full flex-col border-l border-zinc-900">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="text-xs uppercase text-zinc-500">
+                      The World
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setRightCollapsed(true)}
+                      className="text-zinc-500"
+                    >
+                      <Menu className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {rightCollapsed ? (
+                    <div className="flex flex-1 flex-col items-center gap-4 px-2 pt-8 text-zinc-500">
+                      <button
+                        type="button"
+                        onClick={() => rightPanelRef.current?.expand?.()}
+                        className="rounded-full border border-zinc-800 p-2 text-zinc-500 hover:text-zinc-200"
+                      >
+                        <Menu className="h-4 w-4" />
+                      </button>
+                      <Users className="h-4 w-4" />
+                      <ScrollText className="h-4 w-4" />
+                    </div>
+                  ) : (
+                    <div className="flex flex-1 flex-col gap-6 px-4 pb-6">
+                      <div>
+                        <div className="text-xs uppercase text-zinc-500">
+                          Party list
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          {party?.map((member) => {
+                            const isActive =
+                              turnModeEnabled && member.playerName === room?.leaderName;
+                            return (
+                              <div
+                                key={member._id}
+                                className={`flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-zinc-200 ring-1 ring-zinc-800 ${
+                                  isActive ? "ring-emerald-500" : ""
+                                }`}
+                              >
+                                {getInitials(member.playerName)}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs uppercase text-zinc-500">
+                          Room info
+                        </div>
+                        <div className="mt-3 text-sm text-zinc-400">
+                          Dungeon Entrance. Lantern light flickers against wet stone.
+                        </div>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="text-xs uppercase text-zinc-500">
+                          System log
+                        </div>
+                        <ScrollArea className="mt-3 h-40 rounded-xl border border-zinc-800 bg-zinc-900/70 p-2">
+                          <div className="space-y-2 text-xs text-zinc-400">
+                            {messages
+                              ?.filter((msg) => msg.kind === "system")
+                              .slice(-12)
+                              .map((msg) => (
+                                <div key={msg._id}>{msg.body}</div>
+                              )) || <div>No rolls yet.</div>}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           )}
         </div>
       </SignedIn>
