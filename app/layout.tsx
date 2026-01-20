@@ -23,7 +23,9 @@ export default function RootLayout({
       </head>
       <body>
         <ClerkProvider>
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+          <ConvexClientProvider>
+            <div className="mx-auto max-w-6xl">{children}</div>
+          </ConvexClientProvider>
         </ClerkProvider>
       </body>
     </html>
