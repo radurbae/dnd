@@ -1197,7 +1197,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  <ScrollArea className="flex-1 px-6">
+                  <ScrollArea className="flex-1 px-6 pb-32">
                     <div className="mx-auto w-full max-w-3xl py-8">
                       {error && (
                         <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-3 text-sm text-rose-300">
