@@ -35,6 +35,25 @@ export const getMyCharacter = query({
   }
 });
 
+export const getMyByRoom = query({
+  args: {
+    roomCode: v.string()
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    return ctx.db
+      .query("players")
+      .withIndex("by_room_user", (q) =>
+        q.eq("roomCode", args.roomCode).eq("userId", identity.subject)
+      )
+      .first();
+  }
+});
+
 export const listByRoom = query({
   args: {
     roomCode: v.string()
@@ -83,6 +102,11 @@ export const createCharacter = mutation({
   args: {
     roomCode: v.string(),
     playerName: v.string(),
+    race: v.string(),
+    strength: v.number(),
+    dexterity: v.number(),
+    intelligence: v.number(),
+    status: v.string(),
     className: v.string(),
     hp: v.number(),
     inventory: v.string()
@@ -116,6 +140,11 @@ export const createCharacter = mutation({
       roomCode: args.roomCode,
       userId: identity.subject,
       playerName: trimmedName,
+      race: args.race,
+      strength: args.strength,
+      dexterity: args.dexterity,
+      intelligence: args.intelligence,
+      status: args.status,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),
       inventory: trimmedInventory,
@@ -130,6 +159,11 @@ export const upsert = mutation({
   args: {
     roomCode: v.string(),
     playerName: v.string(),
+    race: v.string(),
+    strength: v.number(),
+    dexterity: v.number(),
+    intelligence: v.number(),
+    status: v.string(),
     className: v.string(),
     hp: v.number(),
     inventory: v.string()
@@ -159,6 +193,11 @@ export const upsert = mutation({
       roomCode: args.roomCode,
       userId: identity.subject,
       playerName: trimmedName,
+      race: args.race,
+      strength: args.strength,
+      dexterity: args.dexterity,
+      intelligence: args.intelligence,
+      status: args.status,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),
       inventory: trimmedInventory,

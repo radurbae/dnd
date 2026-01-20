@@ -9,7 +9,8 @@ export default defineSchema({
     summaryCount: v.number(),
     summary: v.string(),
     leaderName: v.string(),
-    turnMode: v.boolean()
+    turnMode: v.boolean(),
+    status: v.string()
   }).index("by_code", ["code"]),
   participants: defineTable({
     roomCode: v.string(),
@@ -20,6 +21,11 @@ export default defineSchema({
     roomCode: v.string(),
     userId: v.string(),
     playerName: v.string(),
+    race: v.string(),
+    strength: v.number(),
+    dexterity: v.number(),
+    intelligence: v.number(),
+    status: v.string(),
     className: v.string(),
     hp: v.number(),
     inventory: v.string(),

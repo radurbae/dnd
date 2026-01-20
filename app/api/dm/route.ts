@@ -31,9 +31,10 @@ function getConvexUrl() {
 }
 
 export async function POST(request: Request) {
-  const { roomCode, playerName } = (await request.json()) as {
+  const { roomCode, playerName, prompt } = (await request.json()) as {
     roomCode?: string;
     playerName?: string;
+    prompt?: string;
   };
 
   if (!roomCode || !playerName) {
@@ -74,7 +75,9 @@ export async function POST(request: Request) {
   const result = await streamText({
     model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
     system: buildDungeonMasterPrompt(partySummary, campaignSummary),
-    messages
+    messages: prompt
+      ? [...messages, { role: "user", content: prompt }]
+      : messages
   });
 
   void result.text.then(async (text) => {

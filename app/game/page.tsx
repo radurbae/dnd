@@ -69,6 +69,15 @@ const CHARACTER_CLASSES = [
   "Druid"
 ];
 
+const CHARACTER_RACES = [
+  "Human",
+  "Elf",
+  "Dwarf",
+  "Halfling",
+  "Tiefling",
+  "Dragonborn"
+];
+
 const INVENTORY_SETS = [
   "Torch, rope, rations",
   "Herbal kit, compass, bedroll",
@@ -121,11 +130,12 @@ function getInitials(name: string) {
 function generateCharacter() {
   const className =
     CHARACTER_CLASSES[Math.floor(Math.random() * CHARACTER_CLASSES.length)];
+  const race = CHARACTER_RACES[Math.floor(Math.random() * CHARACTER_RACES.length)];
   const hp = Math.floor(Math.random() * 9) + 8;
   const inventory =
     INVENTORY_SETS[Math.floor(Math.random() * INVENTORY_SETS.length)];
 
-  return { className, hp, inventory };
+  return { className, race, hp, inventory };
 }
 
 function escapeRegex(value: string) {
@@ -153,8 +163,16 @@ export default function Home() {
   const [aiStartedAt, setAiStartedAt] = useState<number | null>(null);
   const [isAiStreaming, setIsAiStreaming] = useState(false);
   const [className, setClassName] = useState("Fighter");
+  const [race, setRace] = useState("Human");
   const [hp, setHp] = useState(12);
   const [inventory, setInventory] = useState("Torch, rope, rations");
+  const [strength, setStrength] = useState(12);
+  const [dexterity, setDexterity] = useState(12);
+  const [intelligence, setIntelligence] = useState(12);
+  const [statusNote, setStatusNote] = useState("Ready");
+  const [characterStep, setCharacterStep] = useState(1);
+  const [backstoryPrompt, setBackstoryPrompt] = useState("");
+  const [backstoryText, setBackstoryText] = useState("");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -169,6 +187,7 @@ export default function Home() {
   const sendMessage = useMutation(api.messages.send);
   const createCharacter = useMutation(api.players.createCharacter);
   const upsertPlayer = useMutation(api.players.upsert);
+  const startAdventure = useMutation(api.rooms.startAdventure);
   const setTurnMode = useMutation(api.rooms.setTurnMode);
 
   const participants = useQuery(
@@ -221,8 +240,13 @@ export default function Home() {
     }
 
     setClassName(playerSheet.className);
+    setRace(playerSheet.race);
     setHp(playerSheet.hp);
     setInventory(playerSheet.inventory);
+    setStrength(playerSheet.strength);
+    setDexterity(playerSheet.dexterity);
+    setIntelligence(playerSheet.intelligence);
+    setStatusNote(playerSheet.status);
     setHasGeneratedCharacter(true);
   }, [playerSheet]);
 
@@ -237,6 +261,7 @@ export default function Home() {
 
     const generated = generateCharacter();
     setClassName(generated.className);
+    setRace(generated.race);
     setHp(generated.hp);
     setInventory(generated.inventory);
     setHasGeneratedCharacter(true);
@@ -490,6 +515,11 @@ export default function Home() {
       await createCharacter({
         roomCode,
         playerName,
+        race,
+        strength,
+        dexterity,
+        intelligence,
+        status: statusNote,
         className,
         hp,
         inventory
@@ -510,7 +540,18 @@ export default function Home() {
 
     setIsBusy(true);
     try {
-      await upsertPlayer({ roomCode, playerName, className, hp, inventory });
+      await upsertPlayer({
+        roomCode,
+        playerName,
+        race,
+        strength,
+        dexterity,
+        intelligence,
+        status: statusNote,
+        className,
+        hp,
+        inventory
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to update character sheet."
@@ -523,8 +564,59 @@ export default function Home() {
   const handleRandomizeCharacter = () => {
     const generated = generateCharacter();
     setClassName(generated.className);
+    setRace(generated.race);
     setHp(generated.hp);
     setInventory(generated.inventory);
+  };
+
+  const handleStartAdventure = async () => {
+    if (!roomCode) {
+      return;
+    }
+    setIsBusy(true);
+    try {
+      await startAdventure({ roomCode, leaderName: playerName });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to start adventure."
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleGenerateBackstory = async () => {
+    if (!backstoryPrompt.trim()) {
+      setError("Add a concept before generating.");
+      return;
+    }
+
+    setError(null);
+    setIsBusy(true);
+    try {
+      const response = await fetch("/api/dm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          roomCode,
+          playerName,
+          prompt: `Write a short character backstory based on: ${backstoryPrompt}`
+        })
+      });
+      if (!response.ok) {
+        throw new Error("Backstory generation failed.");
+      }
+      const text = await response.text();
+      setBackstoryText(text.trim());
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to generate backstory."
+      );
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const handleSlashSelect = (command: string) => {
@@ -619,6 +711,170 @@ export default function Home() {
     setRightCollapsed(isCollapsed);
   }, []);
 
+  const renderCharacterWizard = () => {
+    if (!roomCode) {
+      return null;
+    }
+
+    return (
+      <div className="mx-auto w-full max-w-3xl px-6 pb-24 pt-8">
+        <div className="text-xs uppercase text-zinc-500">Character Setup</div>
+        <h2 className="mt-2 text-2xl font-semibold text-zinc-100">
+          Shape your hero
+        </h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          Complete the ritual before the adventure begins.
+        </p>
+
+        <div className="mt-8 space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6">
+          {characterStep === 1 && (
+            <div className="space-y-4">
+              <div className="text-xs uppercase text-zinc-500">
+                Step 1 · Class & Race
+              </div>
+              <div className="grid gap-4">
+                <label className="text-sm text-zinc-400">
+                  Class
+                  <select
+                    className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100"
+                    value={className}
+                    onChange={(event) => setClassName(event.target.value)}
+                  >
+                    {CHARACTER_CLASSES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm text-zinc-400">
+                  Race
+                  <select
+                    className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100"
+                    value={race}
+                    onChange={(event) => setRace(event.target.value)}
+                  >
+                    {CHARACTER_RACES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={() => setCharacterStep(2)}>Next</Button>
+                <Button variant="ghost" onClick={handleRandomizeCharacter}>
+                  Randomize
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {characterStep === 2 && (
+            <div className="space-y-4">
+              <div className="text-xs uppercase text-zinc-500">
+                Step 2 · Assign Stats
+              </div>
+              <p className="text-sm text-zinc-400">
+                Use the standard array. Adjust if needed.
+              </p>
+              <div className="grid gap-3 text-sm text-zinc-400">
+                <label className="flex items-center justify-between">
+                  STR
+                  <input
+                    type="number"
+                    className="w-24"
+                    value={strength}
+                    onChange={(event) =>
+                      setStrength(Number(event.target.value || 0))
+                    }
+                  />
+                </label>
+                <label className="flex items-center justify-between">
+                  DEX
+                  <input
+                    type="number"
+                    className="w-24"
+                    value={dexterity}
+                    onChange={(event) =>
+                      setDexterity(Number(event.target.value || 0))
+                    }
+                  />
+                </label>
+                <label className="flex items-center justify-between">
+                  INT
+                  <input
+                    type="number"
+                    className="w-24"
+                    value={intelligence}
+                    onChange={(event) =>
+                      setIntelligence(Number(event.target.value || 0))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="ghost" onClick={() => setCharacterStep(1)}>
+                  Back
+                </Button>
+                <Button onClick={() => setCharacterStep(3)}>Next</Button>
+              </div>
+            </div>
+          )}
+
+          {characterStep === 3 && (
+            <div className="space-y-4">
+              <div className="text-xs uppercase text-zinc-500">
+                Step 3 · AI Backstory
+              </div>
+              <textarea
+                placeholder="Describe your concept..."
+                value={backstoryPrompt}
+                onChange={(event) => setBackstoryPrompt(event.target.value)}
+              />
+              <Button onClick={handleGenerateBackstory} disabled={isBusy}>
+                Generate backstory
+              </Button>
+              {backstoryText && (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
+                  {backstoryText}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <Button variant="ghost" onClick={() => setCharacterStep(2)}>
+                  Back
+                </Button>
+                <Button onClick={() => setCharacterStep(4)}>Next</Button>
+              </div>
+            </div>
+          )}
+
+          {characterStep === 4 && (
+            <div className="space-y-4">
+              <div className="text-xs uppercase text-zinc-500">
+                Step 4 · Ready Up
+              </div>
+              <input
+                value={statusNote}
+                onChange={(event) => setStatusNote(event.target.value)}
+                placeholder="Status (e.g. Ready)"
+              />
+              <div className="flex gap-3">
+                <Button variant="ghost" onClick={() => setCharacterStep(3)}>
+                  Back
+                </Button>
+                <Button onClick={handleCreateCharacter} disabled={isBusy}>
+                  Ready Up
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!isLoaded) {
     return <main className="grid place-items-center">Loading...</main>;
   }
@@ -685,6 +941,8 @@ export default function Home() {
                 </div>
               </section>
             </div>
+          ) : !playerSheet ? (
+            renderCharacterWizard()
           ) : (
             <ResizablePanelGroup orientation="horizontal" className="h-full">
               <ResizablePanel
@@ -742,6 +1000,10 @@ export default function Home() {
                             <div className="text-sm text-zinc-200">
                               {className}
                             </div>
+                            <div className="text-xs uppercase text-zinc-500">
+                              Race
+                            </div>
+                            <div className="text-sm text-zinc-200">{race}</div>
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-xs uppercase">
                                 <span>HP</span>
@@ -759,35 +1021,25 @@ export default function Home() {
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <span>STR</span>
-                                <span>12</span>
+                                <span>{strength}</span>
                               </div>
                               <div className="flex items-center justify-between">
                                 <span>DEX</span>
-                                <span>11</span>
+                                <span>{dexterity}</span>
                               </div>
                               <div className="flex items-center justify-between">
                                 <span>INT</span>
-                                <span>14</span>
+                                <span>{intelligence}</span>
                               </div>
                             </div>
                             <div className="space-y-2">
-                              {!playerSheet ? (
-                                <Button
-                                  variant="ghost"
-                                  onClick={handleCreateCharacter}
-                                  disabled={isBusy}
-                                >
-                                  Create character
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  onClick={handleSaveCharacter}
-                                  disabled={isBusy}
-                                >
-                                  Save character
-                                </Button>
-                              )}
+                      <Button
+                        variant="ghost"
+                        onClick={handleSaveCharacter}
+                        disabled={isBusy}
+                      >
+                        Save character
+                      </Button>
                               <Button
                                 variant="ghost"
                                 onClick={handleRandomizeCharacter}
@@ -828,6 +1080,18 @@ export default function Home() {
                       {turnModeEnabled ? "Turn Mode" : "Free Play"}
                     </div>
                   </div>
+                  {room?.status === "lobby" && (
+                    <div className="border-b border-zinc-900 px-6 py-4 text-sm text-zinc-400">
+                      Waiting in the lobby. {isLeader ? "Start the adventure when everyone is ready." : "Await the host to start the adventure."}
+                      {isLeader && (
+                        <div className="mt-3">
+                          <Button onClick={handleStartAdventure} disabled={isBusy}>
+                            Start Adventure
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <ScrollArea className="flex-1 px-6">
                     <div className="mx-auto w-full max-w-3xl py-8">
@@ -1047,8 +1311,8 @@ export default function Home() {
                         </div>
                         <div className="mt-3 flex flex-wrap gap-3">
                           {party?.map((member) => {
-                            const isActive =
-                              turnModeEnabled && member.playerName === room?.leaderName;
+                          const isActive =
+                              turnModeEnabled && member.status === "Active";
                             return (
                               <div
                                 key={member._id}

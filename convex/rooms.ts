@@ -78,7 +78,8 @@ export const createRoom = mutation({
       summaryCount: 0,
       summary: "",
       leaderName,
-      turnMode: false
+      turnMode: false,
+      status: "lobby"
     });
 
     const prolog = generateProlog();
@@ -223,5 +224,28 @@ export const setTurnMode = mutation({
     await ctx.db.patch(room._id, {
       turnMode: args.enabled
     });
+  }
+});
+
+export const startAdventure = mutation({
+  args: {
+    roomCode: v.string(),
+    leaderName: v.string()
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db
+      .query("rooms")
+      .withIndex("by_code", (q) => q.eq("code", args.roomCode))
+      .first();
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    if (room.leaderName !== args.leaderName) {
+      throw new Error("Only the party leader can start the adventure.");
+    }
+
+    await ctx.db.patch(room._id, { status: "playing" });
   }
 });
