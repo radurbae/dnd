@@ -10,7 +10,7 @@ export default defineSchema({
     summary: v.string(),
     leaderName: v.string(),
     turnMode: v.boolean(),
-    status: v.string()
+    status: v.optional(v.string())
   }).index("by_code", ["code"]),
   participants: defineTable({
     roomCode: v.string(),

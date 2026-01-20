@@ -1103,7 +1103,7 @@ export default function Home() {
                       {turnModeEnabled ? "Turn Mode" : "Free Play"}
                     </div>
                   </div>
-                  {room?.status === "lobby" && (
+                  {(room?.status ?? "lobby") === "lobby" && (
                     <div className="border-b border-zinc-900 px-6 py-4 text-sm text-zinc-400">
                       Waiting in the lobby. OOC chat is open.{" "}
                       {isLeader
