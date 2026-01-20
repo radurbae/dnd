@@ -182,15 +182,15 @@ export default function Home() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [autoJoinAttempted, setAutoJoinAttempted] = useState(false);
   const [hasGeneratedCharacter, setHasGeneratedCharacter] = useState(false);
-  const [pendingMessages, setPendingMessages] = useState<
-    Array<{
-      _id: string;
-      body: string;
-      playerName: string;
-      createdAt: number;
-      kind: "chat";
-    }>
-  >([]);
+  type PendingMessage = {
+    _id: string;
+    body: string;
+    playerName: string;
+    createdAt: number;
+    kind: "chat";
+  };
+
+  const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const leftPanelRef = useRef<any>(null);
   const rightPanelRef = useRef<any>(null);
 
@@ -419,7 +419,7 @@ export default function Home() {
       const optimisticId = `pending-${Date.now()}-${Math.random()
         .toString(16)
         .slice(2)}`;
-      const optimisticMessage = {
+      const optimisticMessage: PendingMessage = {
         _id: optimisticId,
         body: message,
         playerName,
