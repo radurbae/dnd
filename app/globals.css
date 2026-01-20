@@ -114,34 +114,54 @@ button.secondary {
 }
 
 .message {
-  @apply rounded-2xl ring-1 ring-white/10 px-4 py-3;
+  @apply flex w-full gap-4 px-2;
 }
 
-.message.user {
-  @apply ml-auto bg-blue-900/30 text-slate-100 text-right;
+.message-avatar {
+  @apply h-10 w-10 flex items-center justify-center rounded-xl bg-slate-800/60 text-sm font-semibold text-amber-300;
+  font-family: "Cinzel", serif;
+}
+
+.message-content {
+  @apply flex-1;
+}
+
+.message-header {
+  @apply mb-1 flex items-center gap-3 text-sm;
+}
+
+.message-name {
+  @apply font-serif text-amber-400;
+}
+
+.message-time {
+  @apply text-xs text-slate-500;
+}
+
+.message-body {
+  @apply text-slate-300 leading-relaxed;
+}
+
+.message.user .message-body {
+  @apply text-slate-200;
 }
 
 .message.dm {
-  @apply w-full bg-slate-950/90 text-slate-200;
+  @apply border-l-2 border-amber-500 bg-gradient-to-r from-amber-900/10 to-transparent pl-3;
   font-family: "Cinzel", serif;
   font-size: 1.02rem;
 }
 
 .message.system {
-  @apply mx-auto rounded-xl bg-slate-800/40 px-4 py-2 text-center text-xs text-slate-400;
+  @apply justify-center text-center text-xs text-slate-400;
 }
 
-.message strong {
-  @apply block font-serif text-amber-400;
-  margin-bottom: 4px;
+.message.system .message-avatar {
+  @apply hidden;
 }
 
-.message.system strong {
-  @apply text-slate-400;
-}
-
-.message.dm strong {
-  @apply text-amber-300;
+.message.system .message-header {
+  @apply justify-center;
 }
 
 .message-form {

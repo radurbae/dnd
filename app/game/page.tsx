@@ -550,7 +550,7 @@ export default function Home() {
             <div className="message-list">
               {messages?.length ? (
                 messages.map((msg) => (
-                  <div key={msg._id} className="message-row">
+                  <div key={msg._id} className="message-row mb-6">
                     <div
                       className={`message ${
                         msg.kind === "system"
@@ -560,16 +560,27 @@ export default function Home() {
                           : "user"
                       }`}
                     >
-                      <strong>
-                        {msg.kind === "system"
-                          ? "System Event"
-                          : msg.playerName}{" "}
-                        · {timeFormatter.format(msg.createdAt)}
-                      </strong>
-                      <div>
-                        {msg.kind === "system"
-                          ? `${msg.playerName} ${msg.body}`
-                          : msg.body}
+                      <div className="message-avatar">
+                        {getInitials(
+                          msg.kind === "system" ? "System" : msg.playerName
+                        )}
+                      </div>
+                      <div className="message-content">
+                        <div className="message-header">
+                          <span className="message-name">
+                            {msg.kind === "system"
+                              ? "System Event"
+                              : msg.playerName}
+                          </span>
+                          <span className="message-time">
+                            {timeFormatter.format(msg.createdAt)}
+                          </span>
+                        </div>
+                        <div className="message-body">
+                          {msg.kind === "system"
+                            ? `${msg.playerName} ${msg.body}`
+                            : msg.body}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -578,12 +589,18 @@ export default function Home() {
                 <div className="muted">No messages yet. Break the silence!</div>
               )}
               {roomCode && (isAiStreaming || aiStream) && (
-                <div className="message-row">
+                <div className="message-row mb-6">
                   <div className="message dm">
-                    <strong>Dungeon Master · streaming</strong>
-                    <div>
-                      {aiStream ||
-                        "The Dungeon Master is plotting the next twist..."}
+                    <div className="message-avatar">DM</div>
+                    <div className="message-content">
+                      <div className="message-header">
+                        <span className="message-name">Dungeon Master</span>
+                        <span className="message-time">streaming</span>
+                      </div>
+                      <div className="message-body">
+                        {aiStream ||
+                          "The Dungeon Master is plotting the next twist..."}
+                      </div>
                     </div>
                   </div>
                 </div>
