@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { RedirectToSignIn, SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
-import { api } from "../convex/_generated/api";
-import type { Id } from "../convex/_generated/dataModel";
+import {
+  RedirectToSignIn,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useUser
+} from "@clerk/nextjs";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 const ADJECTIVES = [
   "Brave",
@@ -80,7 +86,6 @@ export default function Home() {
     user?.username ||
     user?.primaryEmailAddress?.emailAddress ||
     fallbackName;
-  const userId = user?.id || "";
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [participantId, setParticipantId] = useState<Id<"participants"> | null>(
     null
@@ -104,6 +109,7 @@ export default function Home() {
   const joinRoom = useMutation(api.rooms.joinRoom);
   const leaveRoom = useMutation(api.rooms.leaveRoom);
   const sendMessage = useMutation(api.messages.send);
+  const createCharacter = useMutation(api.players.createCharacter);
   const upsertPlayer = useMutation(api.players.upsert);
   const setTurnMode = useMutation(api.rooms.setTurnMode);
 
@@ -118,8 +124,8 @@ export default function Home() {
   );
 
   const playerSheet = useQuery(
-    api.players.getByRoomAndUser,
-    roomCode && userId ? { roomCode, userId } : "skip"
+    api.players.getMyCharacter,
+    roomCode ? { roomCode } : "skip"
   );
 
   const party = useQuery(
@@ -185,24 +191,12 @@ export default function Home() {
   }, [slashActive]);
 
   const handleCreateRoom = async () => {
-    if (!userId) {
-      setError("Sign in to create a room.");
-      return;
-    }
     setError(null);
     setIsBusy(true);
 
     try {
       const { code } = await createRoom({ leaderName: playerName });
       const joined = await joinRoom({ roomCode: code, playerName });
-      await upsertPlayer({
-        roomCode: joined.roomCode,
-        userId,
-        playerName,
-        className,
-        hp,
-        inventory
-      });
       setRoomCode(joined.roomCode);
       setParticipantId(joined.participantId);
     } catch (err) {
@@ -213,10 +207,6 @@ export default function Home() {
   };
 
   const handleJoinRoom = async () => {
-    if (!userId) {
-      setError("Sign in to join a room.");
-      return;
-    }
     if (!roomInput.trim()) {
       setError("Enter a room code.");
       return;
@@ -229,14 +219,6 @@ export default function Home() {
       const joined = await joinRoom({
         roomCode: roomInput,
         playerName
-      });
-      await upsertPlayer({
-        roomCode: joined.roomCode,
-        userId,
-        playerName,
-        className,
-        hp,
-        inventory
       });
       setRoomCode(joined.roomCode);
       setParticipantId(joined.participantId);
@@ -404,6 +386,29 @@ export default function Home() {
     await triggerAiResponse(roomCode);
   };
 
+  const handleCreateCharacter = async () => {
+    if (!roomCode) {
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      await createCharacter({
+        roomCode,
+        playerName,
+        className,
+        hp,
+        inventory
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to create character."
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const handleSaveCharacter = async () => {
     if (!roomCode) {
       return;
@@ -411,14 +416,7 @@ export default function Home() {
 
     setIsBusy(true);
     try {
-      await upsertPlayer({
-        roomCode,
-        userId,
-        playerName,
-        className,
-        hp,
-        inventory
-      });
+      await upsertPlayer({ roomCode, playerName, className, hp, inventory });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to update character sheet."
@@ -780,35 +778,66 @@ export default function Home() {
                   <div className="muted text-sm">
                     Your character sheet
                   </div>
-                  <div className="grid mt-2">
-                    <input
-                      value={className}
-                      onChange={(event) => setClassName(event.target.value)}
-                      placeholder="Class"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      value={hp}
-                      onChange={(event) =>
-                        setHp(Number(event.target.value || 0))
-                      }
-                      placeholder="HP"
-                    />
-                    <textarea
-                      value={inventory}
-                      onChange={(event) => setInventory(event.target.value)}
-                      placeholder="Inventory"
-                    />
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={handleSaveCharacter}
-                      disabled={isBusy}
-                    >
-                      Save character
-                    </button>
-                  </div>
+                  {!playerSheet ? (
+                    <div className="grid mt-2">
+                      <input
+                        value={className}
+                        onChange={(event) => setClassName(event.target.value)}
+                        placeholder="Class"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={hp}
+                        onChange={(event) =>
+                          setHp(Number(event.target.value || 0))
+                        }
+                        placeholder="HP"
+                      />
+                      <textarea
+                        value={inventory}
+                        onChange={(event) => setInventory(event.target.value)}
+                        placeholder="Inventory"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateCharacter}
+                        disabled={isBusy}
+                      >
+                        Create character
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid mt-2">
+                      <input
+                        value={className}
+                        onChange={(event) => setClassName(event.target.value)}
+                        placeholder="Class"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={hp}
+                        onChange={(event) =>
+                          setHp(Number(event.target.value || 0))
+                        }
+                        placeholder="HP"
+                      />
+                      <textarea
+                        value={inventory}
+                        onChange={(event) => setInventory(event.target.value)}
+                        placeholder="Inventory"
+                      />
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={handleSaveCharacter}
+                        disabled={isBusy}
+                      >
+                        Save character
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </aside>
