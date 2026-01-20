@@ -40,6 +40,11 @@ export const listByRoom = query({
     roomCode: v.string()
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated.");
+    }
+
     return ctx.db
       .query("players")
       .withIndex("by_room", (q) => q.eq("roomCode", args.roomCode))
@@ -67,6 +72,17 @@ export const createCharacter = mutation({
 
     if (!trimmedName) {
       throw new Error("Player name is required.");
+    }
+
+    const existing = await ctx.db
+      .query("players")
+      .withIndex("by_room_user", (q) =>
+        q.eq("roomCode", args.roomCode).eq("userId", identity.subject)
+      )
+      .first();
+
+    if (existing) {
+      throw new Error("Character already exists.");
     }
 
     const payload = {
