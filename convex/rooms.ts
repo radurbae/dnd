@@ -141,6 +141,18 @@ export const joinRoom = mutation({
       joinedAt: Date.now()
     });
 
+    await ctx.db.insert("messages", {
+      roomCode,
+      playerName: "System",
+      kind: "system",
+      body: `${playerName} joined the room.`,
+      createdAt: Date.now()
+    });
+
+    await ctx.db.patch(room._id, {
+      messageCount: room.messageCount + 1
+    });
+
     return { participantId, roomCode };
   }
 });
@@ -150,7 +162,33 @@ export const leaveRoom = mutation({
     participantId: v.id("participants")
   },
   handler: async (ctx, args) => {
+    const participant = await ctx.db.get(args.participantId);
+    if (!participant) {
+      return;
+    }
+
     await ctx.db.delete(args.participantId);
+
+    const room = await ctx.db
+      .query("rooms")
+      .withIndex("by_code", (q) => q.eq("code", participant.roomCode))
+      .first();
+
+    if (!room) {
+      return;
+    }
+
+    await ctx.db.insert("messages", {
+      roomCode: participant.roomCode,
+      playerName: "System",
+      kind: "system",
+      body: `${participant.playerName} left the room.`,
+      createdAt: Date.now()
+    });
+
+    await ctx.db.patch(room._id, {
+      messageCount: room.messageCount + 1
+    });
   }
 });
 

@@ -87,6 +87,8 @@ const INVENTORY_SETS = [
   "Map case, chalk, grappling hook"
 ];
 
+const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
+
 function createPlayerName() {
   const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const creature = CREATURES[Math.floor(Math.random() * CREATURES.length)];
@@ -134,8 +136,10 @@ function generateCharacter() {
   const hp = Math.floor(Math.random() * 9) + 8;
   const inventory =
     INVENTORY_SETS[Math.floor(Math.random() * INVENTORY_SETS.length)];
+  const stats = [...STANDARD_ARRAY].sort(() => Math.random() - 0.5);
+  const [strength, dexterity, intelligence] = stats;
 
-  return { className, race, hp, inventory };
+  return { className, race, hp, inventory, strength, dexterity, intelligence };
 }
 
 function escapeRegex(value: string) {
@@ -218,6 +222,15 @@ export default function Home() {
   const participantCount = participants?.length ?? 0;
   const isLeader = room?.leaderName === playerName;
   const turnModeEnabled = room?.turnMode ?? false;
+  const readyMap = useMemo(() => {
+    const map = new Map<string, string>();
+    party?.forEach((member) => {
+      map.set(member.playerName, member.status);
+    });
+    return map;
+  }, [party]);
+  const readyCount =
+    participants?.filter((member) => readyMap.has(member.playerName)).length ?? 0;
 
   const canSend = message.trim().length > 0 && !isBusy;
   const slashActive = message.trim().startsWith("/");
@@ -264,6 +277,9 @@ export default function Home() {
     setRace(generated.race);
     setHp(generated.hp);
     setInventory(generated.inventory);
+    setStrength(generated.strength);
+    setDexterity(generated.dexterity);
+    setIntelligence(generated.intelligence);
     setHasGeneratedCharacter(true);
   }, [roomCode, playerSheet, hasGeneratedCharacter]);
 
@@ -567,6 +583,9 @@ export default function Home() {
     setRace(generated.race);
     setHp(generated.hp);
     setInventory(generated.inventory);
+    setStrength(generated.strength);
+    setDexterity(generated.dexterity);
+    setIntelligence(generated.intelligence);
   };
 
   const handleStartAdventure = async () => {
@@ -576,6 +595,7 @@ export default function Home() {
     setIsBusy(true);
     try {
       await startAdventure({ roomCode, leaderName: playerName });
+      triggerAiResponse(roomCode);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to start adventure."
@@ -586,14 +606,17 @@ export default function Home() {
   };
 
   const handleGenerateBackstory = async () => {
-    if (!backstoryPrompt.trim()) {
-      setError("Add a concept before generating.");
+    if (!roomCode) {
+      setError("Join a room before generating a backstory.");
       return;
     }
 
     setError(null);
     setIsBusy(true);
     try {
+      const prompt = backstoryPrompt.trim()
+        ? `Write a short character backstory based on: ${backstoryPrompt}`
+        : `Write a short character backstory for a ${race} ${className} with ${strength} STR, ${dexterity} DEX, ${intelligence} INT. Include a defining trait and a reason to join the party.`;
       const response = await fetch("/api/dm", {
         method: "POST",
         headers: {
@@ -602,7 +625,7 @@ export default function Home() {
         body: JSON.stringify({
           roomCode,
           playerName,
-          prompt: `Write a short character backstory based on: ${backstoryPrompt}`
+          prompt
         })
       });
       if (!response.ok) {
@@ -1082,7 +1105,38 @@ export default function Home() {
                   </div>
                   {room?.status === "lobby" && (
                     <div className="border-b border-zinc-900 px-6 py-4 text-sm text-zinc-400">
-                      Waiting in the lobby. {isLeader ? "Start the adventure when everyone is ready." : "Await the host to start the adventure."}
+                      Waiting in the lobby. OOC chat is open.{" "}
+                      {isLeader
+                        ? "Start the adventure when everyone is ready."
+                        : "Await the host to start the adventure."}
+                      <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-xs text-zinc-400">
+                        <div className="flex items-center justify-between text-[11px] uppercase text-zinc-500">
+                          <span>Party readiness</span>
+                          <span>
+                            {readyCount}/{participantCount} ready
+                          </span>
+                        </div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {participants?.map((member) => {
+                            const status =
+                              readyMap.get(member.playerName) ??
+                              "Creating character";
+                            return (
+                              <div
+                                key={member._id}
+                                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2"
+                              >
+                                <div className="text-sm text-zinc-200">
+                                  {member.playerName}
+                                </div>
+                                <div className="text-[11px] text-zinc-500">
+                                  {status}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                       {isLeader && (
                         <div className="mt-3">
                           <Button onClick={handleStartAdventure} disabled={isBusy}>
