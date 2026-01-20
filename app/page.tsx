@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { RedirectToSignIn, SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 
@@ -72,7 +73,14 @@ function getInitials(name: string) {
 }
 
 export default function Home() {
-  const [playerName] = useState(() => createPlayerName());
+  const { isLoaded, user } = useUser();
+  const [fallbackName] = useState(() => createPlayerName());
+  const playerName =
+    user?.fullName ||
+    user?.username ||
+    user?.primaryEmailAddress?.emailAddress ||
+    fallbackName;
+  const userId = user?.id || "";
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [participantId, setParticipantId] = useState<Id<"participants"> | null>(
     null
@@ -110,8 +118,8 @@ export default function Home() {
   );
 
   const playerSheet = useQuery(
-    api.players.getByRoomAndName,
-    roomCode ? { roomCode, playerName } : "skip"
+    api.players.getByRoomAndUser,
+    roomCode && userId ? { roomCode, userId } : "skip"
   );
 
   const party = useQuery(
@@ -177,6 +185,10 @@ export default function Home() {
   }, [slashActive]);
 
   const handleCreateRoom = async () => {
+    if (!userId) {
+      setError("Sign in to create a room.");
+      return;
+    }
     setError(null);
     setIsBusy(true);
 
@@ -185,6 +197,7 @@ export default function Home() {
       const joined = await joinRoom({ roomCode: code, playerName });
       await upsertPlayer({
         roomCode: joined.roomCode,
+        userId,
         playerName,
         className,
         hp,
@@ -200,6 +213,10 @@ export default function Home() {
   };
 
   const handleJoinRoom = async () => {
+    if (!userId) {
+      setError("Sign in to join a room.");
+      return;
+    }
     if (!roomInput.trim()) {
       setError("Enter a room code.");
       return;
@@ -215,6 +232,7 @@ export default function Home() {
       });
       await upsertPlayer({
         roomCode: joined.roomCode,
+        userId,
         playerName,
         className,
         hp,
@@ -395,6 +413,7 @@ export default function Home() {
     try {
       await upsertPlayer({
         roomCode,
+        userId,
         playerName,
         className,
         hp,
@@ -420,20 +439,31 @@ export default function Home() {
     []
   );
 
+  if (!isLoaded) {
+    return <main className="grid place-items-center">Loading...</main>;
+  }
+
   return (
     <main>
-      <header className="grid">
-        <div>
-          <span className="badge">Real-time Convex Chat</span>
-          <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Gather your party and start a room.
-          </h1>
-          <p className="muted mt-3 max-w-xl">
-            Your player name is <strong>{playerName}</strong>. Create a lobby or
-            join with a code to sync messages instantly.
-          </p>
-        </div>
-      </header>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+      <SignedIn>
+        <header className="grid">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="badge">Real-time Convex Chat</span>
+              <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl">
+                Gather your party and start a room.
+              </h1>
+              <p className="muted mt-3 max-w-xl">
+                Your player name is <strong>{playerName}</strong>. Create a lobby or
+                join with a code to sync messages instantly.
+              </p>
+            </div>
+            <UserButton afterSignOutUrl="/sign-in" />
+          </div>
+        </header>
 
       {error && (
         <div className="notice mt-6">
@@ -785,6 +815,7 @@ export default function Home() {
           </div>
         </section>
       )}
+      </SignedIn>
     </main>
   );
 }

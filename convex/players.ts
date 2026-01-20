@@ -1,16 +1,16 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getByRoomAndName = query({
+export const getByRoomAndUser = query({
   args: {
     roomCode: v.string(),
-    playerName: v.string()
+    userId: v.string()
   },
   handler: async (ctx, args) => {
     return ctx.db
       .query("players")
-      .withIndex("by_room_player", (q) =>
-        q.eq("roomCode", args.roomCode).eq("playerName", args.playerName)
+      .withIndex("by_room_user", (q) =>
+        q.eq("roomCode", args.roomCode).eq("userId", args.userId)
       )
       .first();
   }
@@ -31,6 +31,7 @@ export const listByRoom = query({
 export const upsert = mutation({
   args: {
     roomCode: v.string(),
+    userId: v.string(),
     playerName: v.string(),
     className: v.string(),
     hp: v.number(),
@@ -47,13 +48,14 @@ export const upsert = mutation({
 
     const existing = await ctx.db
       .query("players")
-      .withIndex("by_room_player", (q) =>
-        q.eq("roomCode", args.roomCode).eq("playerName", trimmedName)
+      .withIndex("by_room_user", (q) =>
+        q.eq("roomCode", args.roomCode).eq("userId", args.userId)
       )
       .first();
 
     const payload = {
       roomCode: args.roomCode,
+      userId: args.userId,
       playerName: trimmedName,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),

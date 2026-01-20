@@ -12,11 +12,12 @@ A real-time lobby + room chat built with Next.js and Convex.
    ```bash
    npx convex dev
    ```
-3. Set the Convex URL in your environment:
+3. Set the Convex, OpenAI, and Clerk keys in your environment:
    ```bash
    cp .env.local.example .env.local
    # Add NEXT_PUBLIC_CONVEX_URL and CONVEX_URL from the Convex dashboard
    # Add OPENAI_API_KEY for the Dungeon Master responses
+   # Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY from Clerk
    ```
 4. Start Next.js:
    ```bash

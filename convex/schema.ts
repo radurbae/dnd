@@ -18,6 +18,7 @@ export default defineSchema({
   }).index("by_room", ["roomCode", "joinedAt"]),
   players: defineTable({
     roomCode: v.string(),
+    userId: v.string(),
     playerName: v.string(),
     className: v.string(),
     hp: v.number(),
@@ -25,7 +26,8 @@ export default defineSchema({
     updatedAt: v.number()
   })
     .index("by_room", ["roomCode", "updatedAt"])
-    .index("by_room_player", ["roomCode", "playerName"]),
+    .index("by_room_player", ["roomCode", "playerName"])
+    .index("by_room_user", ["roomCode", "userId"]),
   messages: defineTable({
     roomCode: v.string(),
     playerName: v.string(),
