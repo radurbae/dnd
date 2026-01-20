@@ -620,7 +620,7 @@ export default function Home() {
             )}
 
             <form
-              className="message-form composer"
+              className="message-form composer mb-6"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSendMessage();
