@@ -78,6 +78,31 @@ const CHARACTER_RACES = [
   "Dragonborn"
 ];
 
+const GENDERS = ["Female", "Male", "Nonbinary", "Other"] as const;
+
+const CHARACTER_NAMES = [
+  "Tharok",
+  "Liora",
+  "Bryn",
+  "Kael",
+  "Seraphine",
+  "Garrick",
+  "Nyx",
+  "Eldric",
+  "Vesper",
+  "Rowan",
+  "Mira",
+  "Cassian",
+  "Solenne",
+  "Orin",
+  "Sylas",
+  "Elowen",
+  "Riven",
+  "Isolde",
+  "Torin",
+  "Vara"
+];
+
 const EQUIPMENT_SETS = [
   [
     { name: "Torch", type: "tool", quantity: 2 },
@@ -194,6 +219,9 @@ function generateCharacter() {
   const className =
     CHARACTER_CLASSES[Math.floor(Math.random() * CHARACTER_CLASSES.length)];
   const race = CHARACTER_RACES[Math.floor(Math.random() * CHARACTER_RACES.length)];
+  const characterName =
+    CHARACTER_NAMES[Math.floor(Math.random() * CHARACTER_NAMES.length)];
+  const gender = GENDERS[Math.floor(Math.random() * GENDERS.length)];
   const hp = Math.floor(Math.random() * 9) + 8;
   const equipment =
     EQUIPMENT_SETS[Math.floor(Math.random() * EQUIPMENT_SETS.length)];
@@ -203,6 +231,8 @@ function generateCharacter() {
   return {
     className,
     race,
+    characterName,
+    gender,
     hp,
     equipment,
     stats: { str, dex, con, int, wis, cha }
@@ -395,8 +425,8 @@ export default function Home() {
     const generated = generateCharacter();
     setClassName(generated.className);
     setRace(generated.race);
-    setCharacterName("");
-    setGender("Unspecified");
+    setCharacterName(generated.characterName);
+    setGender(generated.gender);
     setHp(generated.hp);
     setEquipment(generated.equipment);
     setStats(generated.stats);
@@ -765,8 +795,8 @@ export default function Home() {
     const generated = generateCharacter();
     setClassName(generated.className);
     setRace(generated.race);
-    setCharacterName("");
-    setGender("Unspecified");
+    setCharacterName(generated.characterName);
+    setGender(generated.gender);
     setHp(generated.hp);
     setEquipment(generated.equipment);
     setStats(generated.stats);
@@ -1013,13 +1043,11 @@ export default function Home() {
                     value={gender}
                     onChange={(event) => setGender(event.target.value)}
                   >
-                    {["Unspecified", "Female", "Male", "Nonbinary", "Other"].map(
-                      (option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      )
-                    )}
+                    {["Unspecified", ...GENDERS].map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                   </select>
                 </label>
               </div>
