@@ -784,6 +784,15 @@ export default function Home() {
       return;
     }
 
+    if (backstory.trim()) {
+      const confirmed = window.confirm(
+        "This will replace your current backstory and items. Are you sure?"
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setError(null);
     setIsGeneratingDetails(true);
     try {

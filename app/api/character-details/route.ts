@@ -39,11 +39,13 @@ export async function POST(request: Request) {
   const system =
     "Return ONLY valid JSON that matches this schema: " +
     '{"backstory":"string","skills":["string","string"],"equipment":[{"name":"string","type":"string","quantity":number},{"name":"string","type":"string","quantity":number},{"name":"string","type":"string","quantity":number}]}. ' +
-    "Backstory must be exactly 2 sentences. Skills must be 2 items. Equipment must be 3 items and include one flavor item that is not a weapon.";
+    "Backstory must be exactly 2 sentences. Skills must be 2 items. Equipment must be 3 items and include one flavor item that is not a weapon. " +
+    "Avoid cliches. If the class is a Fighter, do not say they were a soldier; choose a more distinctive background like a gladiator or a disgraced bodyguard.";
 
   const { text } = await generateText({
     model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
     system,
+    temperature: 0.9,
     prompt: `Class: ${className}. Race: ${race}.`
   });
 
