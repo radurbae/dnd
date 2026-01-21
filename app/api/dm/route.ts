@@ -20,6 +20,7 @@ function buildDungeonMasterPrompt(partySummary: string, campaignSummary: string)
     "Use Bold for key items, enemies, or locations.\n\n" +
     "Use Italics for internal monologues or whispers.\n\n" +
     "Use > Blockquotes for reading letters or inscriptions.\n\n" +
+    "If a player takes damage, include a hidden tag at the end of your response in this format: [[DAMAGE: PlayerName amount]]. Example: [[DAMAGE: Gimli 5]].\n\n" +
     "Important: Never break character. Never say \"As an AI language model.\"\n\n" +
     "Combat Logic (The \"Hit\" System):\n\n" +
     "Do not track exact HP for enemies. Use \"Hits\".\n\n" +

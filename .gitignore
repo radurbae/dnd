@@ -5,3 +5,5 @@ env.local.clerk
 convex/_generated
 convex/README.md
 convex/tsconfig.json
+.vercel
+.env*.local

@@ -212,3 +212,38 @@ export const upsert = mutation({
     return ctx.db.insert("players", payload);
   }
 });
+
+export const applyDamageByName = mutation({
+  args: {
+    roomCode: v.string(),
+    playerName: v.string(),
+    amount: v.number()
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated.");
+    }
+
+    const amount = Math.max(0, Math.floor(args.amount));
+    if (!amount) {
+      return;
+    }
+
+    const player = await ctx.db
+      .query("players")
+      .withIndex("by_room_player", (q) =>
+        q.eq("roomCode", args.roomCode).eq("playerName", args.playerName)
+      )
+      .first();
+
+    if (!player) {
+      throw new Error("Player not found.");
+    }
+
+    await ctx.db.patch(player._id, {
+      hp: Math.max(0, player.hp - amount),
+      updatedAt: Date.now()
+    });
+  }
+});

@@ -120,6 +120,8 @@ function parseRollCommand(input: string) {
   return { sides, result };
 }
 
+const DAMAGE_TAG_REGEX = /\[\[DAMAGE:\s*([^\]]+?)\s+(\d+)\]\]/g;
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -193,6 +195,7 @@ export default function Home() {
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const leftPanelRef = useRef<any>(null);
   const rightPanelRef = useRef<any>(null);
+  const processedDamageRef = useRef<Set<string>>(new Set());
 
   const createRoom = useMutation(api.rooms.createRoom);
   const joinRoom = useMutation(api.rooms.joinRoom);
@@ -200,6 +203,7 @@ export default function Home() {
   const sendMessage = useMutation(api.messages.send);
   const createCharacter = useMutation(api.players.createCharacter);
   const upsertPlayer = useMutation(api.players.upsert);
+  const applyDamage = useMutation(api.players.applyDamageByName);
   const startAdventure = useMutation(api.rooms.startAdventure);
   const setTurnMode = useMutation(api.rooms.setTurnMode);
 
@@ -310,6 +314,37 @@ export default function Home() {
       setIsAiStreaming(false);
     }
   }, [aiStartedAt, messages]);
+
+  useEffect(() => {
+    if (!messages?.length || !roomCode) {
+      return;
+    }
+
+    const pending = messages.filter(
+      (msg) =>
+        msg.playerName === "Dungeon Master" &&
+        !processedDamageRef.current.has(msg._id)
+    );
+
+    if (!pending.length) {
+      return;
+    }
+
+    pending.forEach((msg) => {
+      const matches = Array.from(msg.body.matchAll(DAMAGE_TAG_REGEX));
+      matches.forEach((match) => {
+        const name = match[1]?.trim();
+        const amount = Number(match[2]);
+        if (!name || Number.isNaN(amount)) {
+          return;
+        }
+        applyDamage({ roomCode, playerName: name, amount }).catch(() => {
+          // Ignore damage sync errors.
+        });
+      });
+      processedDamageRef.current.add(msg._id);
+    });
+  }, [applyDamage, messages, roomCode]);
 
   useEffect(() => {
     if (!messages?.length || pendingMessages.length === 0) {
@@ -763,6 +798,9 @@ export default function Home() {
     () => new Intl.DateTimeFormat("en", { timeStyle: "short" }),
     []
   );
+
+  const stripDamageTags = (text: string) =>
+    text.replace(DAMAGE_TAG_REGEX, "").trim();
 
   const visibleMessages = useMemo(() => {
     if (!messages?.length) {
@@ -1283,7 +1321,7 @@ export default function Home() {
                                         )
                                       }}
                                     >
-                                      {msg.body}
+                                      {stripDamageTags(msg.body)}
                                     </ReactMarkdown>
                                   </div>
                                 </div>
@@ -1304,7 +1342,7 @@ export default function Home() {
                                         isPending ? "opacity-60" : ""
                                       }`}
                                     >
-                                      {renderWithMentions(msg.body)}
+                                      {renderWithMentions(stripDamageTags(msg.body))}
                                     </div>
                                   </div>
                                 </div>
