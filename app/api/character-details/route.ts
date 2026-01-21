@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import type { LanguageModelV1 } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 type DetailPayload = {
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     "Backstory must be exactly 2 sentences. Skills must be 2 items. Equipment must be 3 items and include one flavor item that is not a weapon.";
 
   const { text } = await generateText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o-mini") as unknown as LanguageModelV1,
     system,
     prompt: `Class: ${className}. Race: ${race}.`
   });
