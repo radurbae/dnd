@@ -1171,106 +1171,64 @@ export default function Home() {
               <div className="grid gap-4">
                 <div>
                   <div className="text-xs uppercase text-zinc-500">Skills</div>
-                  <div className="mt-2 grid gap-2">
-                    {skills.map((skill, index) => (
-                      <input
-                        key={`${skill}-${index}`}
-                        value={skill}
-                        onChange={(event) => {
-                          const next = [...skills];
-                          next[index] = event.target.value;
-                          setSkills(next);
-                        }}
-                        placeholder="Skill"
-                        disabled={detailsLocked}
-                      />
-                    ))}
-                    <Button
-                      variant="ghost"
-                      onClick={() => setSkills((current) => [...current, ""])}
-                      disabled={detailsLocked}
-                    >
-                      Add skill
-                    </Button>
-                  </div>
+                  {skills.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2 text-sm text-zinc-300">
+                      {skills.map((skill, index) => (
+                        <span
+                          key={`${skill}-${index}`}
+                          className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs text-zinc-300"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-sm text-zinc-500">
+                      No skills yet. Generate details to roll your proficiencies.
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="text-xs uppercase text-zinc-500">
                     Equipment
                   </div>
-                  <div className="mt-2 grid gap-3">
-                    {equipment.map((item, index) => (
-                      <div
-                        key={`${item.name}-${index}`}
-                        className="grid gap-2 md:grid-cols-[2fr_1fr_90px]"
-                      >
-                        <input
-                          value={item.name}
-                          onChange={(event) => {
-                            const next = [...equipment];
-                            next[index] = {
-                              ...next[index],
-                              name: event.target.value
-                            };
-                            setEquipment(next);
-                          }}
-                          placeholder="Item name"
-                          disabled={detailsLocked}
-                        />
-                        <input
-                          value={item.type}
-                          onChange={(event) => {
-                            const next = [...equipment];
-                            next[index] = {
-                              ...next[index],
-                              type: event.target.value
-                            };
-                            setEquipment(next);
-                          }}
-                          placeholder="Type"
-                          disabled={detailsLocked}
-                        />
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={(event) => {
-                            const next = [...equipment];
-                            next[index] = {
-                              ...next[index],
-                              quantity: Math.max(
-                                1,
-                                Number(event.target.value || 1)
-                              )
-                            };
-                            setEquipment(next);
-                          }}
-                          placeholder="Qty"
-                          disabled={detailsLocked}
-                        />
-                      </div>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      onClick={() =>
-                        setEquipment((current) => [
-                          ...current,
-                          { name: "", type: "", quantity: 1 }
-                        ])
-                      }
-                      disabled={detailsLocked}
-                    >
-                      Add equipment
-                    </Button>
-                  </div>
+                  {equipment.length ? (
+                    <div className="mt-2 space-y-2 text-sm text-zinc-300">
+                      {equipment.map((item, index) => (
+                        <div
+                          key={`${item.name}-${index}`}
+                          className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/70 px-3 py-2 text-xs text-zinc-300"
+                        >
+                          <span>{item.name}</span>
+                          <span className="text-zinc-500">
+                            {item.type} · ×{item.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-sm text-zinc-500">
+                      No equipment yet. Generate details to receive a kit.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-3">
                 <Button variant="ghost" onClick={() => setCharacterStep(1)}>
                   Back
                 </Button>
-                <Button onClick={() => setCharacterStep(3)}>Next</Button>
+                <Button
+                  onClick={() => setCharacterStep(3)}
+                  disabled={!skills.length || !equipment.length}
+                >
+                  Next
+                </Button>
               </div>
+              {!skills.length || !equipment.length ? (
+                <div className="text-xs text-rose-400">
+                  Generate details to lock in skills and equipment.
+                </div>
+              ) : null}
             </div>
           )}
 
