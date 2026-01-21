@@ -128,6 +128,8 @@ export const createCharacter = mutation({
   args: {
     roomCode: v.string(),
     playerName: v.string(),
+    characterName: v.string(),
+    gender: v.string(),
     race: v.string(),
     stats: v.object({
       str: v.number(),
@@ -157,11 +159,19 @@ export const createCharacter = mutation({
     }
 
     const trimmedName = args.playerName.trim();
+    const trimmedCharacterName = args.characterName.trim();
+    const trimmedGender = args.gender.trim();
     const trimmedClass = args.className.trim();
     const trimmedBackstory = args.backstory.trim();
 
     if (!trimmedName) {
       throw new Error("Player name is required.");
+    }
+    if (!trimmedCharacterName) {
+      throw new Error("Character name is required.");
+    }
+    if (!trimmedGender) {
+      throw new Error("Gender is required.");
     }
 
     const existing = await ctx.db
@@ -184,6 +194,8 @@ export const createCharacter = mutation({
       roomCode: args.roomCode,
       userId: identity.subject,
       playerName: trimmedName,
+      characterName: trimmedCharacterName,
+      gender: trimmedGender,
       race: args.race,
       stats: args.stats,
       status: args.status,
@@ -207,6 +219,8 @@ export const upsert = mutation({
   args: {
     roomCode: v.string(),
     playerName: v.string(),
+    characterName: v.string(),
+    gender: v.string(),
     race: v.string(),
     stats: v.object({
       str: v.number(),
@@ -236,11 +250,19 @@ export const upsert = mutation({
     }
 
     const trimmedName = args.playerName.trim();
+    const trimmedCharacterName = args.characterName.trim();
+    const trimmedGender = args.gender.trim();
     const trimmedClass = args.className.trim();
     const trimmedBackstory = args.backstory.trim();
 
     if (!trimmedName) {
       throw new Error("Player name is required.");
+    }
+    if (!trimmedCharacterName) {
+      throw new Error("Character name is required.");
+    }
+    if (!trimmedGender) {
+      throw new Error("Gender is required.");
     }
 
     const existing = await ctx.db
@@ -259,6 +281,8 @@ export const upsert = mutation({
       roomCode: args.roomCode,
       userId: identity.subject,
       playerName: trimmedName,
+      characterName: trimmedCharacterName,
+      gender: trimmedGender,
       race: args.race,
       stats: args.stats,
       status: args.status,

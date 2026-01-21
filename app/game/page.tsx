@@ -243,6 +243,8 @@ export default function Home() {
   const [isAiStreaming, setIsAiStreaming] = useState(false);
   const [className, setClassName] = useState("Fighter");
   const [race, setRace] = useState("Human");
+  const [characterName, setCharacterName] = useState("");
+  const [gender, setGender] = useState("Unspecified");
   const [hp, setHp] = useState(12);
   const [stats, setStats] = useState({
     str: 8,
@@ -361,6 +363,8 @@ export default function Home() {
 
     setClassName(playerSheet.className);
     setRace(playerSheet.race ?? "Human");
+    setCharacterName(playerSheet.characterName ?? "");
+    setGender(playerSheet.gender ?? "Unspecified");
     setHp(playerSheet.hp);
     setStats(
       playerSheet.stats ?? {
@@ -391,6 +395,8 @@ export default function Home() {
     const generated = generateCharacter();
     setClassName(generated.className);
     setRace(generated.race);
+    setCharacterName("");
+    setGender("Unspecified");
     setHp(generated.hp);
     setEquipment(generated.equipment);
     setStats(generated.stats);
@@ -705,6 +711,8 @@ export default function Home() {
       await createCharacter({
         roomCode,
         playerName,
+        characterName,
+        gender,
         race,
         stats,
         status: statusNote,
@@ -733,6 +741,8 @@ export default function Home() {
       await upsertPlayer({
         roomCode,
         playerName,
+        characterName,
+        gender,
         race,
         stats,
         status: statusNote,
@@ -755,6 +765,8 @@ export default function Home() {
     const generated = generateCharacter();
     setClassName(generated.className);
     setRace(generated.race);
+    setCharacterName("");
+    setGender("Unspecified");
     setHp(generated.hp);
     setEquipment(generated.equipment);
     setStats(generated.stats);
@@ -958,6 +970,15 @@ export default function Home() {
               </div>
               <div className="grid gap-4">
                 <label className="text-sm text-zinc-400">
+                  Character name
+                  <input
+                    className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100"
+                    value={characterName}
+                    onChange={(event) => setCharacterName(event.target.value)}
+                    placeholder="Name your hero"
+                  />
+                </label>
+                <label className="text-sm text-zinc-400">
                   Class
                   <select
                     className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100"
@@ -983,6 +1004,22 @@ export default function Home() {
                         {option}
                       </option>
                     ))}
+                  </select>
+                </label>
+                <label className="text-sm text-zinc-400">
+                  Gender
+                  <select
+                    className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100"
+                    value={gender}
+                    onChange={(event) => setGender(event.target.value)}
+                  >
+                    {["Unspecified", "Female", "Male", "Nonbinary", "Other"].map(
+                      (option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      )
+                    )}
                   </select>
                 </label>
               </div>
@@ -1050,7 +1087,11 @@ export default function Home() {
               <div className="flex gap-3">
                 <Button
                   onClick={() => setCharacterStep(2)}
-                  disabled={pointsRemaining !== 0 || Boolean(classWarning)}
+                  disabled={
+                    pointsRemaining !== 0 ||
+                    Boolean(classWarning) ||
+                    !characterName.trim()
+                  }
                 >
                   Next
                 </Button>
@@ -1058,6 +1099,11 @@ export default function Home() {
                   Randomize
                 </Button>
               </div>
+              {!characterName.trim() && (
+                <div className="text-xs text-rose-400">
+                  Character name is required.
+                </div>
+              )}
             </div>
           )}
 
@@ -1350,10 +1396,24 @@ export default function Home() {
                             <div className="text-sm text-zinc-200">
                               {className}
                             </div>
+                            {characterName && (
+                              <>
+                                <div className="text-xs uppercase text-zinc-500">
+                                  Name
+                                </div>
+                                <div className="text-sm text-zinc-200">
+                                  {characterName}
+                                </div>
+                              </>
+                            )}
                             <div className="text-xs uppercase text-zinc-500">
                               Race
                             </div>
                             <div className="text-sm text-zinc-200">{race}</div>
+                            <div className="text-xs uppercase text-zinc-500">
+                              Gender
+                            </div>
+                            <div className="text-sm text-zinc-200">{gender}</div>
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-xs uppercase">
                                 <span>HP</span>

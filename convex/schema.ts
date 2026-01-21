@@ -22,6 +22,8 @@ export default defineSchema({
     roomCode: v.string(),
     userId: v.string(),
     playerName: v.string(),
+    characterName: v.optional(v.string()),
+    gender: v.optional(v.string()),
     race: v.optional(v.string()),
     strength: v.optional(v.number()),
     dexterity: v.optional(v.number()),

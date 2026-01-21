@@ -87,9 +87,10 @@ export async function POST(request: Request) {
 
   const partyJson = JSON.stringify(
     party.map((member) => ({
-      name: member.playerName,
+      name: member.characterName || member.playerName,
       class: member.className,
-      hp: member.hp
+      hp: member.hp,
+      gender: member.gender || "Unspecified"
     }))
   );
 
