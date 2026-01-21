@@ -260,6 +260,7 @@ export default function Home() {
   const [statusNote, setStatusNote] = useState("Ready");
   const [characterStep, setCharacterStep] = useState(1);
   const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
+  const [detailsLocked, setDetailsLocked] = useState(false);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -759,6 +760,7 @@ export default function Home() {
     setStats(generated.stats);
     setSkills([]);
     setBackstory("");
+    setDetailsLocked(false);
   };
 
   const handleStartAdventure = async () => {
@@ -818,6 +820,7 @@ export default function Home() {
       setBackstory(data.backstory ?? "");
       setSkills(Array.isArray(data.skills) ? data.skills : []);
       setEquipment(Array.isArray(data.equipment) ? data.equipment : []);
+      setDetailsLocked(true);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to generate details."
@@ -1079,6 +1082,11 @@ export default function Home() {
                 >
                   Generate Details
                 </Button>
+                {detailsLocked && (
+                  <span className="text-xs text-zinc-500">
+                    Locked after generation.
+                  </span>
+                )}
                 {isGeneratingDetails && (
                   <div className="flex items-center gap-2 text-xs text-zinc-400">
                     <span className="h-4 w-4 animate-spin rounded-full border border-zinc-500 border-t-transparent" />
@@ -1100,11 +1108,13 @@ export default function Home() {
                           setSkills(next);
                         }}
                         placeholder="Skill"
+                        disabled={detailsLocked}
                       />
                     ))}
                     <Button
                       variant="ghost"
                       onClick={() => setSkills((current) => [...current, ""])}
+                      disabled={detailsLocked}
                     >
                       Add skill
                     </Button>
@@ -1131,6 +1141,7 @@ export default function Home() {
                             setEquipment(next);
                           }}
                           placeholder="Item name"
+                          disabled={detailsLocked}
                         />
                         <input
                           value={item.type}
@@ -1143,6 +1154,7 @@ export default function Home() {
                             setEquipment(next);
                           }}
                           placeholder="Type"
+                          disabled={detailsLocked}
                         />
                         <input
                           type="number"
@@ -1160,6 +1172,7 @@ export default function Home() {
                             setEquipment(next);
                           }}
                           placeholder="Qty"
+                          disabled={detailsLocked}
                         />
                       </div>
                     ))}
@@ -1171,6 +1184,7 @@ export default function Home() {
                           { name: "", type: "", quantity: 1 }
                         ])
                       }
+                      disabled={detailsLocked}
                     >
                       Add equipment
                     </Button>
