@@ -29,7 +29,28 @@ export default defineSchema({
     status: v.optional(v.string()),
     className: v.string(),
     hp: v.number(),
-    inventory: v.string(),
+    inventory: v.optional(v.string()),
+    stats: v.optional(
+      v.object({
+        str: v.number(),
+        dex: v.number(),
+        con: v.number(),
+        int: v.number(),
+        wis: v.number(),
+        cha: v.number()
+      })
+    ),
+    skills: v.optional(v.array(v.string())),
+    backstory: v.optional(v.string()),
+    equipment: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          type: v.string(),
+          quantity: v.number()
+        })
+      )
+    ),
     updatedAt: v.number()
   })
     .index("by_room", ["roomCode", "updatedAt"])

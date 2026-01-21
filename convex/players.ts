@@ -1,6 +1,32 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+const POINT_BUY_COST: Record<number, number> = {
+  8: 0,
+  9: 1,
+  10: 2,
+  11: 3,
+  12: 4,
+  13: 5,
+  14: 7,
+  15: 9
+};
+
+const STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"] as const;
+
+function statCost(score: number) {
+  return POINT_BUY_COST[score] ?? Infinity;
+}
+
+function validatePointBuy(stats: Record<(typeof STAT_KEYS)[number], number>) {
+  const total = STAT_KEYS.reduce((sum, key) => sum + statCost(stats[key]), 0);
+  const allValid = STAT_KEYS.every((key) => {
+    const value = stats[key];
+    return Number.isFinite(value) && value >= 8 && value <= 15;
+  });
+  return { total, allValid };
+}
+
 export const getByRoomAndUser = query({
   args: {
     roomCode: v.string(),
@@ -103,13 +129,26 @@ export const createCharacter = mutation({
     roomCode: v.string(),
     playerName: v.string(),
     race: v.string(),
-    strength: v.number(),
-    dexterity: v.number(),
-    intelligence: v.number(),
+    stats: v.object({
+      str: v.number(),
+      dex: v.number(),
+      con: v.number(),
+      int: v.number(),
+      wis: v.number(),
+      cha: v.number()
+    }),
     status: v.string(),
     className: v.string(),
     hp: v.number(),
-    inventory: v.string()
+    skills: v.array(v.string()),
+    backstory: v.string(),
+    equipment: v.array(
+      v.object({
+        name: v.string(),
+        type: v.string(),
+        quantity: v.number()
+      })
+    )
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -119,7 +158,7 @@ export const createCharacter = mutation({
 
     const trimmedName = args.playerName.trim();
     const trimmedClass = args.className.trim();
-    const trimmedInventory = args.inventory.trim();
+    const trimmedBackstory = args.backstory.trim();
 
     if (!trimmedName) {
       throw new Error("Player name is required.");
@@ -136,18 +175,27 @@ export const createCharacter = mutation({
       throw new Error("Character already exists.");
     }
 
+    const { total, allValid } = validatePointBuy(args.stats);
+    if (!allValid || total > 27) {
+      throw new Error("Stats do not match the point buy rules.");
+    }
+
     const payload = {
       roomCode: args.roomCode,
       userId: identity.subject,
       playerName: trimmedName,
       race: args.race,
-      strength: args.strength,
-      dexterity: args.dexterity,
-      intelligence: args.intelligence,
+      stats: args.stats,
       status: args.status,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),
-      inventory: trimmedInventory,
+      skills: args.skills.map((skill) => skill.trim()).filter(Boolean),
+      backstory: trimmedBackstory,
+      equipment: args.equipment.map((item) => ({
+        name: item.name.trim(),
+        type: item.type.trim(),
+        quantity: Math.max(1, Math.floor(item.quantity))
+      })),
       updatedAt: Date.now()
     };
 
@@ -160,13 +208,26 @@ export const upsert = mutation({
     roomCode: v.string(),
     playerName: v.string(),
     race: v.string(),
-    strength: v.number(),
-    dexterity: v.number(),
-    intelligence: v.number(),
+    stats: v.object({
+      str: v.number(),
+      dex: v.number(),
+      con: v.number(),
+      int: v.number(),
+      wis: v.number(),
+      cha: v.number()
+    }),
     status: v.string(),
     className: v.string(),
     hp: v.number(),
-    inventory: v.string()
+    skills: v.array(v.string()),
+    backstory: v.string(),
+    equipment: v.array(
+      v.object({
+        name: v.string(),
+        type: v.string(),
+        quantity: v.number()
+      })
+    )
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -176,7 +237,7 @@ export const upsert = mutation({
 
     const trimmedName = args.playerName.trim();
     const trimmedClass = args.className.trim();
-    const trimmedInventory = args.inventory.trim();
+    const trimmedBackstory = args.backstory.trim();
 
     if (!trimmedName) {
       throw new Error("Player name is required.");
@@ -189,18 +250,27 @@ export const upsert = mutation({
       )
       .first();
 
+    const { total, allValid } = validatePointBuy(args.stats);
+    if (!allValid || total > 27) {
+      throw new Error("Stats do not match the point buy rules.");
+    }
+
     const payload = {
       roomCode: args.roomCode,
       userId: identity.subject,
       playerName: trimmedName,
       race: args.race,
-      strength: args.strength,
-      dexterity: args.dexterity,
-      intelligence: args.intelligence,
+      stats: args.stats,
       status: args.status,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),
-      inventory: trimmedInventory,
+      skills: args.skills.map((skill) => skill.trim()).filter(Boolean),
+      backstory: trimmedBackstory,
+      equipment: args.equipment.map((item) => ({
+        name: item.name.trim(),
+        type: item.type.trim(),
+        quantity: Math.max(1, Math.floor(item.quantity))
+      })),
       updatedAt: Date.now()
     };
 

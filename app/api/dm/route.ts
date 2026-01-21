@@ -75,10 +75,13 @@ export async function POST(request: Request) {
 
   const partySummary = party.length
     ? party
-        .map(
-          (member) =>
-            `${member.playerName} the ${member.className} (HP ${member.hp}, inventory: ${member.inventory || "empty"})`
-        )
+        .map((member) => {
+          const equipment =
+            member.equipment?.length
+              ? member.equipment.map((item) => item.name).join(", ")
+              : member.inventory || "empty";
+          return `${member.playerName} the ${member.className} (HP ${member.hp}, gear: ${equipment})`;
+        })
         .join("; ")
     : "No character sheets yet";
 

@@ -78,16 +78,75 @@ const CHARACTER_RACES = [
   "Dragonborn"
 ];
 
-const INVENTORY_SETS = [
-  "Torch, rope, rations",
-  "Herbal kit, compass, bedroll",
-  "Throwing knives, lockpicks, smoke bomb",
-  "Spellbook, ink, crystal focus",
-  "Shield, whetstone, traveler's cloak",
-  "Map case, chalk, grappling hook"
+const EQUIPMENT_SETS = [
+  [
+    { name: "Torch", type: "tool", quantity: 2 },
+    { name: "Rope", type: "tool", quantity: 1 },
+    { name: "Rations", type: "supply", quantity: 3 }
+  ],
+  [
+    { name: "Herbal kit", type: "tool", quantity: 1 },
+    { name: "Compass", type: "tool", quantity: 1 },
+    { name: "Bedroll", type: "supply", quantity: 1 }
+  ],
+  [
+    { name: "Throwing knives", type: "weapon", quantity: 3 },
+    { name: "Lockpicks", type: "tool", quantity: 1 },
+    { name: "Smoke bomb", type: "gear", quantity: 1 }
+  ],
+  [
+    { name: "Spellbook", type: "focus", quantity: 1 },
+    { name: "Ink", type: "supply", quantity: 1 },
+    { name: "Crystal focus", type: "focus", quantity: 1 }
+  ],
+  [
+    { name: "Shield", type: "armor", quantity: 1 },
+    { name: "Whetstone", type: "tool", quantity: 1 },
+    { name: "Traveler's cloak", type: "gear", quantity: 1 }
+  ],
+  [
+    { name: "Map case", type: "tool", quantity: 1 },
+    { name: "Chalk", type: "tool", quantity: 2 },
+    { name: "Grappling hook", type: "gear", quantity: 1 }
+  ]
 ];
 
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
+const POINT_BUY_TOTAL = 27;
+const STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha"] as const;
+const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
+  str: "STR",
+  dex: "DEX",
+  con: "CON",
+  int: "INT",
+  wis: "WIS",
+  cha: "CHA"
+};
+
+const POINT_BUY_COST: Record<number, number> = {
+  8: 0,
+  9: 1,
+  10: 2,
+  11: 3,
+  12: 4,
+  13: 5,
+  14: 7,
+  15: 9
+};
+
+const CLASS_MINIMUMS: Record<
+  string,
+  (stats: Record<(typeof STAT_KEYS)[number], number>) => string | null
+> = {
+  Wizard: (stats) =>
+    stats.int >= 13 ? null : "Your magic is too weak! Increase INT to 13.",
+  Fighter: (stats) =>
+    stats.str >= 13 || stats.dex >= 13
+      ? null
+      : "Fighters need 13+ STR or DEX.",
+  Rogue: (stats) =>
+    stats.dex >= 13 ? null : "Rogues need 13+ DEX."
+};
 
 function createPlayerName() {
   const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
@@ -136,12 +195,26 @@ function generateCharacter() {
     CHARACTER_CLASSES[Math.floor(Math.random() * CHARACTER_CLASSES.length)];
   const race = CHARACTER_RACES[Math.floor(Math.random() * CHARACTER_RACES.length)];
   const hp = Math.floor(Math.random() * 9) + 8;
-  const inventory =
-    INVENTORY_SETS[Math.floor(Math.random() * INVENTORY_SETS.length)];
+  const equipment =
+    EQUIPMENT_SETS[Math.floor(Math.random() * EQUIPMENT_SETS.length)];
   const stats = [...STANDARD_ARRAY].sort(() => Math.random() - 0.5);
-  const [strength, dexterity, intelligence] = stats;
+  const [str, dex, con, int, wis, cha] = stats;
 
-  return { className, race, hp, inventory, strength, dexterity, intelligence };
+  return {
+    className,
+    race,
+    hp,
+    equipment,
+    stats: { str, dex, con, int, wis, cha }
+  };
+}
+
+function statCost(score: number) {
+  return POINT_BUY_COST[score] ?? Infinity;
+}
+
+function clampStat(score: number) {
+  return Math.min(15, Math.max(8, score));
 }
 
 function escapeRegex(value: string) {
@@ -171,14 +244,22 @@ export default function Home() {
   const [className, setClassName] = useState("Fighter");
   const [race, setRace] = useState("Human");
   const [hp, setHp] = useState(12);
-  const [inventory, setInventory] = useState("Torch, rope, rations");
-  const [strength, setStrength] = useState(12);
-  const [dexterity, setDexterity] = useState(12);
-  const [intelligence, setIntelligence] = useState(12);
+  const [stats, setStats] = useState({
+    str: 8,
+    dex: 8,
+    con: 8,
+    int: 8,
+    wis: 8,
+    cha: 8
+  });
+  const [skills, setSkills] = useState<string[]>([]);
+  const [backstory, setBackstory] = useState("");
+  const [equipment, setEquipment] = useState<
+    Array<{ name: string; type: string; quantity: number }>
+  >([]);
   const [statusNote, setStatusNote] = useState("Ready");
   const [characterStep, setCharacterStep] = useState(1);
-  const [backstoryPrompt, setBackstoryPrompt] = useState("");
-  const [backstoryText, setBackstoryText] = useState("");
+  const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -245,6 +326,16 @@ export default function Home() {
   }, [party]);
   const readyCount =
     participants?.filter((member) => readyMap.has(member.playerName)).length ?? 0;
+  const pointsUsed = useMemo(
+    () =>
+      STAT_KEYS.reduce((sum, key) => sum + statCost(stats[key]), 0),
+    [stats]
+  );
+  const pointsRemaining = POINT_BUY_TOTAL - pointsUsed;
+  const classWarning = useMemo(() => {
+    const validator = CLASS_MINIMUMS[className];
+    return validator ? validator(stats) : null;
+  }, [className, stats]);
 
   const inputLocked = isBusy || dmActive;
   const canSend = message.trim().length > 0 && !inputLocked;
@@ -270,10 +361,19 @@ export default function Home() {
     setClassName(playerSheet.className);
     setRace(playerSheet.race ?? "Human");
     setHp(playerSheet.hp);
-    setInventory(playerSheet.inventory);
-    setStrength(playerSheet.strength ?? 12);
-    setDexterity(playerSheet.dexterity ?? 12);
-    setIntelligence(playerSheet.intelligence ?? 12);
+    setStats(
+      playerSheet.stats ?? {
+        str: 8,
+        dex: 8,
+        con: 8,
+        int: 8,
+        wis: 8,
+        cha: 8
+      }
+    );
+    setSkills(playerSheet.skills ?? []);
+    setBackstory(playerSheet.backstory ?? "");
+    setEquipment(playerSheet.equipment ?? []);
     setStatusNote(playerSheet.status ?? "Ready");
     setHasGeneratedCharacter(true);
   }, [playerSheet]);
@@ -291,10 +391,8 @@ export default function Home() {
     setClassName(generated.className);
     setRace(generated.race);
     setHp(generated.hp);
-    setInventory(generated.inventory);
-    setStrength(generated.strength);
-    setDexterity(generated.dexterity);
-    setIntelligence(generated.intelligence);
+    setEquipment(generated.equipment);
+    setStats(generated.stats);
     setHasGeneratedCharacter(true);
   }, [roomCode, playerSheet, hasGeneratedCharacter]);
 
@@ -607,13 +705,13 @@ export default function Home() {
         roomCode,
         playerName,
         race,
-        strength,
-        dexterity,
-        intelligence,
+        stats,
         status: statusNote,
         className,
         hp,
-        inventory
+        skills,
+        backstory,
+        equipment
       });
     } catch (err) {
       setError(
@@ -635,13 +733,13 @@ export default function Home() {
         roomCode,
         playerName,
         race,
-        strength,
-        dexterity,
-        intelligence,
+        stats,
         status: statusNote,
         className,
         hp,
-        inventory
+        skills,
+        backstory,
+        equipment
       });
     } catch (err) {
       setError(
@@ -657,10 +755,10 @@ export default function Home() {
     setClassName(generated.className);
     setRace(generated.race);
     setHp(generated.hp);
-    setInventory(generated.inventory);
-    setStrength(generated.strength);
-    setDexterity(generated.dexterity);
-    setIntelligence(generated.intelligence);
+    setEquipment(generated.equipment);
+    setStats(generated.stats);
+    setSkills([]);
+    setBackstory("");
   };
 
   const handleStartAdventure = async () => {
@@ -680,40 +778,43 @@ export default function Home() {
     }
   };
 
-  const handleGenerateBackstory = async () => {
+  const handleGenerateDetails = async () => {
     if (!roomCode) {
-      setError("Join a room before generating a backstory.");
+      setError("Join a room before generating details.");
       return;
     }
 
     setError(null);
-    setIsBusy(true);
+    setIsGeneratingDetails(true);
     try {
-      const prompt = backstoryPrompt.trim()
-        ? `Write a short character backstory based on: ${backstoryPrompt}`
-        : `Write a short character backstory for a ${race} ${className} with ${strength} STR, ${dexterity} DEX, ${intelligence} INT. Include a defining trait and a reason to join the party.`;
-      const response = await fetch("/api/dm", {
+      const response = await fetch("/api/character-details", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          roomCode,
-          playerName,
-          prompt
+          className,
+          race
         })
       });
       if (!response.ok) {
-        throw new Error("Backstory generation failed.");
+        throw new Error("Detail generation failed.");
       }
-      const text = await response.text();
-      setBackstoryText(text.trim());
+      const data = (await response.json()) as {
+        backstory: string;
+        skills: string[];
+        equipment: Array<{ name: string; type: string; quantity: number }>;
+      };
+
+      setBackstory(data.backstory ?? "");
+      setSkills(Array.isArray(data.skills) ? data.skills : []);
+      setEquipment(Array.isArray(data.equipment) ? data.equipment : []);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to generate backstory."
+        err instanceof Error ? err.message : "Failed to generate details."
       );
     } finally {
-      setIsBusy(false);
+      setIsGeneratingDetails(false);
     }
   };
 
@@ -841,7 +942,7 @@ export default function Home() {
           {characterStep === 1 && (
             <div className="space-y-4">
               <div className="text-xs uppercase text-zinc-500">
-                Step 1 · Class & Race
+                Step 1 · Class, Race & Stats
               </div>
               <div className="grid gap-4">
                 <label className="text-sm text-zinc-400">
@@ -873,8 +974,74 @@ export default function Home() {
                   </select>
                 </label>
               </div>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+                <div className="flex items-center justify-between text-xs uppercase text-zinc-500">
+                  <span>Point Buy</span>
+                  <span>{pointsRemaining} points remaining</span>
+                </div>
+                <div className="mt-4 grid gap-3 text-sm text-zinc-300">
+                  {STAT_KEYS.map((key) => {
+                    const score = stats[key];
+                    const canIncrease =
+                      score < 15 &&
+                      statCost(score + 1) - statCost(score) <= pointsRemaining;
+                    const canDecrease = score > 8;
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <span>{STAT_LABELS[key]}</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            className="h-8 w-8 rounded-full border border-zinc-800 text-zinc-200 disabled:opacity-40"
+                            onClick={() =>
+                              setStats((current) => ({
+                                ...current,
+                                [key]: clampStat(current[key] - 1)
+                              }))
+                            }
+                            disabled={!canDecrease}
+                          >
+                            -
+                          </button>
+                          <span className="w-6 text-center">{score}</span>
+                          <button
+                            type="button"
+                            className="h-8 w-8 rounded-full border border-zinc-800 text-zinc-200 disabled:opacity-40"
+                            onClick={() =>
+                              setStats((current) => ({
+                                ...current,
+                                [key]: clampStat(current[key] + 1)
+                              }))
+                            }
+                            disabled={!canIncrease}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {pointsRemaining !== 0 && (
+                  <div className="mt-3 text-xs text-rose-400">
+                    {pointsRemaining > 0
+                      ? "Spend all 27 points to continue."
+                      : "Too many points spent. Reduce a stat."}
+                  </div>
+                )}
+                {classWarning && (
+                  <div className="mt-2 text-xs text-rose-400">
+                    {classWarning}
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3">
-                <Button onClick={() => setCharacterStep(2)}>Next</Button>
+                <Button
+                  onClick={() => setCharacterStep(2)}
+                  disabled={pointsRemaining !== 0 || Boolean(classWarning)}
+                >
+                  Next
+                </Button>
                 <Button variant="ghost" onClick={handleRandomizeCharacter}>
                   Randomize
                 </Button>
@@ -885,45 +1052,121 @@ export default function Home() {
           {characterStep === 2 && (
             <div className="space-y-4">
               <div className="text-xs uppercase text-zinc-500">
-                Step 2 · Assign Stats
+                Step 2 · Story & Gear
               </div>
-              <p className="text-sm text-zinc-400">
-                Use the standard array. Adjust if needed.
-              </p>
-              <div className="grid gap-3 text-sm text-zinc-400">
-                <label className="flex items-center justify-between">
-                  STR
-                  <input
-                    type="number"
-                    className="w-24"
-                    value={strength}
-                    onChange={(event) =>
-                      setStrength(Number(event.target.value || 0))
-                    }
-                  />
-                </label>
-                <label className="flex items-center justify-between">
-                  DEX
-                  <input
-                    type="number"
-                    className="w-24"
-                    value={dexterity}
-                    onChange={(event) =>
-                      setDexterity(Number(event.target.value || 0))
-                    }
-                  />
-                </label>
-                <label className="flex items-center justify-between">
-                  INT
-                  <input
-                    type="number"
-                    className="w-24"
-                    value={intelligence}
-                    onChange={(event) =>
-                      setIntelligence(Number(event.target.value || 0))
-                    }
-                  />
-                </label>
+              <label className="text-sm text-zinc-400">
+                Backstory
+                <textarea
+                  className="mt-2 min-h-[120px]"
+                  placeholder="A short hook..."
+                  value={backstory}
+                  onChange={(event) => setBackstory(event.target.value)}
+                />
+              </label>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleGenerateDetails}
+                  disabled={isGeneratingDetails}
+                >
+                  Generate Details
+                </Button>
+                {isGeneratingDetails && (
+                  <div className="flex items-center gap-2 text-xs text-zinc-400">
+                    <span className="h-4 w-4 animate-spin rounded-full border border-zinc-500 border-t-transparent" />
+                    Generating...
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-4">
+                <div>
+                  <div className="text-xs uppercase text-zinc-500">Skills</div>
+                  <div className="mt-2 grid gap-2">
+                    {skills.map((skill, index) => (
+                      <input
+                        key={`${skill}-${index}`}
+                        value={skill}
+                        onChange={(event) => {
+                          const next = [...skills];
+                          next[index] = event.target.value;
+                          setSkills(next);
+                        }}
+                        placeholder="Skill"
+                      />
+                    ))}
+                    <Button
+                      variant="ghost"
+                      onClick={() => setSkills((current) => [...current, ""])}
+                    >
+                      Add skill
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase text-zinc-500">
+                    Equipment
+                  </div>
+                  <div className="mt-2 grid gap-3">
+                    {equipment.map((item, index) => (
+                      <div
+                        key={`${item.name}-${index}`}
+                        className="grid gap-2 md:grid-cols-[2fr_1fr_90px]"
+                      >
+                        <input
+                          value={item.name}
+                          onChange={(event) => {
+                            const next = [...equipment];
+                            next[index] = {
+                              ...next[index],
+                              name: event.target.value
+                            };
+                            setEquipment(next);
+                          }}
+                          placeholder="Item name"
+                        />
+                        <input
+                          value={item.type}
+                          onChange={(event) => {
+                            const next = [...equipment];
+                            next[index] = {
+                              ...next[index],
+                              type: event.target.value
+                            };
+                            setEquipment(next);
+                          }}
+                          placeholder="Type"
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(event) => {
+                            const next = [...equipment];
+                            next[index] = {
+                              ...next[index],
+                              quantity: Math.max(
+                                1,
+                                Number(event.target.value || 1)
+                              )
+                            };
+                            setEquipment(next);
+                          }}
+                          placeholder="Qty"
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        setEquipment((current) => [
+                          ...current,
+                          { name: "", type: "", quantity: 1 }
+                        ])
+                      }
+                    >
+                      Add equipment
+                    </Button>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-3">
                 <Button variant="ghost" onClick={() => setCharacterStep(1)}>
@@ -937,34 +1180,7 @@ export default function Home() {
           {characterStep === 3 && (
             <div className="space-y-4">
               <div className="text-xs uppercase text-zinc-500">
-                Step 3 · AI Backstory
-              </div>
-              <textarea
-                placeholder="Describe your concept..."
-                value={backstoryPrompt}
-                onChange={(event) => setBackstoryPrompt(event.target.value)}
-              />
-              <Button onClick={handleGenerateBackstory} disabled={isBusy}>
-                Generate backstory
-              </Button>
-              {backstoryText && (
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
-                  {backstoryText}
-                </div>
-              )}
-              <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setCharacterStep(2)}>
-                  Back
-                </Button>
-                <Button onClick={() => setCharacterStep(4)}>Next</Button>
-              </div>
-            </div>
-          )}
-
-          {characterStep === 4 && (
-            <div className="space-y-4">
-              <div className="text-xs uppercase text-zinc-500">
-                Step 4 · Ready Up
+                Step 3 · Ready Up
               </div>
               <input
                 value={statusNote}
@@ -972,7 +1188,7 @@ export default function Home() {
                 placeholder="Status (e.g. Ready)"
               />
               <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setCharacterStep(3)}>
+                <Button variant="ghost" onClick={() => setCharacterStep(2)}>
                   Back
                 </Button>
                 <Button onClick={handleCreateCharacter} disabled={isBusy}>
@@ -1130,27 +1346,34 @@ export default function Home() {
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span>STR</span>
-                                <span>{strength}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span>DEX</span>
-                                <span>{dexterity}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span>INT</span>
-                                <span>{intelligence}</span>
-                              </div>
+                              {STAT_KEYS.map((key) => (
+                                <div
+                                  key={key}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span>{STAT_LABELS[key]}</span>
+                                  <span>{stats[key]}</span>
+                                </div>
+                              ))}
                             </div>
+                            {skills.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="text-xs uppercase text-zinc-500">
+                                  Skills
+                                </div>
+                                <div className="text-xs text-zinc-400">
+                                  {skills.join(", ")}
+                                </div>
+                              </div>
+                            )}
                             <div className="space-y-2">
-                      <Button
-                        variant="ghost"
-                        onClick={handleSaveCharacter}
-                        disabled={isBusy}
-                      >
-                        Save character
-                      </Button>
+                              <Button
+                                variant="ghost"
+                                onClick={handleSaveCharacter}
+                                disabled={isBusy}
+                              >
+                                Save character
+                              </Button>
                               <Button
                                 variant="ghost"
                                 onClick={handleRandomizeCharacter}
@@ -1162,11 +1385,20 @@ export default function Home() {
                           </div>
                         </TabsContent>
                         <TabsContent value="backpack">
-                          <ul className="space-y-2 text-sm text-zinc-400">
-                            {inventory.split(",").map((item) => (
-                              <li key={item.trim()}>{item.trim()}</li>
-                            ))}
-                          </ul>
+                          {equipment.length ? (
+                            <ul className="space-y-2 text-sm text-zinc-400">
+                              {equipment.map((item, index) => (
+                                <li key={`${item.name}-${index}`}>
+                                  {item.name || "Unnamed item"} · {item.type || "gear"}{" "}
+                                  ×{item.quantity}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="text-sm text-zinc-500">
+                              No equipment yet.
+                            </div>
+                          )}
                         </TabsContent>
                       </Tabs>
                     </div>
