@@ -131,14 +131,19 @@ export const createCharacter = mutation({
     characterName: v.string(),
     gender: v.string(),
     race: v.string(),
-    stats: v.object({
-      str: v.number(),
-      dex: v.number(),
-      con: v.number(),
-      int: v.number(),
-      wis: v.number(),
-      cha: v.number()
-    }),
+    stats: v.optional(
+      v.object({
+        str: v.number(),
+        dex: v.number(),
+        con: v.number(),
+        int: v.number(),
+        wis: v.number(),
+        cha: v.number()
+      })
+    ),
+    strength: v.optional(v.number()),
+    dexterity: v.optional(v.number()),
+    intelligence: v.optional(v.number()),
     status: v.string(),
     className: v.string(),
     hp: v.number(),
@@ -185,7 +190,16 @@ export const createCharacter = mutation({
       throw new Error("Character already exists.");
     }
 
-    const { total, allValid } = validatePointBuy(args.stats);
+    const stats = args.stats ?? {
+      str: Math.min(15, Math.max(8, Math.floor(args.strength ?? 8))),
+      dex: Math.min(15, Math.max(8, Math.floor(args.dexterity ?? 8))),
+      con: 8,
+      int: Math.min(15, Math.max(8, Math.floor(args.intelligence ?? 8))),
+      wis: 8,
+      cha: 8
+    };
+
+    const { total, allValid } = validatePointBuy(stats);
     if (!allValid || total > 27) {
       throw new Error("Stats do not match the point buy rules.");
     }
@@ -197,7 +211,7 @@ export const createCharacter = mutation({
       characterName: trimmedCharacterName,
       gender: trimmedGender,
       race: args.race,
-      stats: args.stats,
+      stats,
       status: args.status,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),
@@ -222,14 +236,19 @@ export const upsert = mutation({
     characterName: v.string(),
     gender: v.string(),
     race: v.string(),
-    stats: v.object({
-      str: v.number(),
-      dex: v.number(),
-      con: v.number(),
-      int: v.number(),
-      wis: v.number(),
-      cha: v.number()
-    }),
+    stats: v.optional(
+      v.object({
+        str: v.number(),
+        dex: v.number(),
+        con: v.number(),
+        int: v.number(),
+        wis: v.number(),
+        cha: v.number()
+      })
+    ),
+    strength: v.optional(v.number()),
+    dexterity: v.optional(v.number()),
+    intelligence: v.optional(v.number()),
     status: v.string(),
     className: v.string(),
     hp: v.number(),
@@ -272,7 +291,16 @@ export const upsert = mutation({
       )
       .first();
 
-    const { total, allValid } = validatePointBuy(args.stats);
+    const stats = args.stats ?? {
+      str: Math.min(15, Math.max(8, Math.floor(args.strength ?? 8))),
+      dex: Math.min(15, Math.max(8, Math.floor(args.dexterity ?? 8))),
+      con: 8,
+      int: Math.min(15, Math.max(8, Math.floor(args.intelligence ?? 8))),
+      wis: 8,
+      cha: 8
+    };
+
+    const { total, allValid } = validatePointBuy(stats);
     if (!allValid || total > 27) {
       throw new Error("Stats do not match the point buy rules.");
     }
@@ -284,7 +312,7 @@ export const upsert = mutation({
       characterName: trimmedCharacterName,
       gender: trimmedGender,
       race: args.race,
-      stats: args.stats,
+      stats,
       status: args.status,
       className: trimmedClass || "Adventurer",
       hp: Math.max(0, Math.floor(args.hp)),
